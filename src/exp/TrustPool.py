@@ -97,7 +97,8 @@ def unit_test():
     target_columns = ['Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)','yield(MPa)', 'Modulus (GPa)', 'Ε(%)']
     results_path = '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/results/ML_All'
     trust_pool = TrustPool(data_path, target_columns, drop_columns, results_path)
-    trust_pool.generate_experience_pool(15, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
+    # trust_pool.data.describe().to_excel('/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed_filled_des.xlsx')
+    trust_pool.generate_experience_pool(10, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
 
 
 if __name__ == '__main__':
