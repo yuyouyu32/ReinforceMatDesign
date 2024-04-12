@@ -1,5 +1,5 @@
 Rules = """- Compositions with a calculated average atomic size difference greater than 12% across all constituent elements score high, as they are more likely to form amorphous structures.
-- Alloys with five or more principal elements, each constituting between 5% and 35% of the total composition, indicating a high mixing entropy, score highest.
+- Alloys with five or more principal elements, indicating a high mixing entropy, score highest.
 - Compositions with a majority of element pairs having a negative heat of mixing score higher, as they are more likely to form a stable amorphous phase.
 - Compositions with a high modulus contrast among constituents, particularly with elements known for high Young's modulus, e.g., Ti and some rare earths like Gd, score higher.
 - Alloys with a Tg/Tl ratio closer to or greater than 0.6 score highest, as they demonstrate better thermal stability.

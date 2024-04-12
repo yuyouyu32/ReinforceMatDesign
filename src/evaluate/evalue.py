@@ -70,13 +70,10 @@ def main():
     all_cost = 0
     data = pd.read_excel('../results/random_search_result_filtered_similar_score.xlsx')
     data = data[['BMGs', 'Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)',  'similar_index']]
-    # data 按照 'Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)'的和排序，降序
-    data['Sum'] = data[['Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)']].sum(axis=1)
-    data = data.sort_values(by='Sum', ascending=False)
-    data = data.drop(columns=['Sum'])
+    data = data.sort_values(by='Ε(%)', ascending=False)
     data.reset_index(drop=True, inplace=True)
     for index, row in tqdm(data.iterrows(), total=data.shape[0]):
-        if index > 200:
+        if index > 50:
             break
         similarities = row['similar_index']
         data_prompt = str(row.drop('similar_index').to_dict())
