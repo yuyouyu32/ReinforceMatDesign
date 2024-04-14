@@ -89,7 +89,7 @@ class TrustPool:
 
 
 def unit_test():
-    trust_pool = TrustPool(data_path, target_columns, drop_columns, results_path)
+    trust_pool = TrustPool(DataPath, TargetColumns, DropColumns, MLResultPath)
     # trust_pool.data.describe().to_excel('/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed_filled_des.xlsx')
     trust_pool.generate_experience_pool(10, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
 

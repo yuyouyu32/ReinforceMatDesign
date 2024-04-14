@@ -1,0 +1,116 @@
+import torch
+import torch.nn as nn
+from torch.distributions.normal import Normal
+import numpy as np
+from RLs.utils import activate_A_func
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+class DeterActorNet(nn.Module):
+    def __init__(self, s_shape, a_shape, action_scale):
+        super(DeterActorNet, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(s_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.LeakyReLU(),
+            nn.Linear(64, a_shape),
+            nn.Tanh()
+        )
+        self.action_scale = action_scale
+
+    def forward(self, x, k):
+        x = self.fc(x)
+        a = activate_A_func(x, k) * torch.tensor(np.array(self.action_scale)).float().to(device)
+        return a
+
+class QNet(nn.Module):
+    def __init__(self, s_shape, a_shape):
+        super(QNet, self).__init__()
+        self.fc_s = nn.Sequential(
+            nn.Linear(s_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.LeakyReLU()
+        )
+        self.fc_a = nn.Sequential(
+            nn.Linear(a_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.LeakyReLU()
+        )
+        self.output = nn.Sequential(
+            nn.Linear(128, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 1)
+        )
+
+    def forward(self, x, a):
+        h1 = self.fc_s(x)
+        h2 = self.fc_a(a)
+        cat = torch.cat([h1, h2], dim=1)
+        q = self.output(cat)
+        return q
+    
+class CriticNet(nn.Module):
+    def __init__(self, s_shape, a_shape):
+        super(CriticNet, self).__init__()
+        self.fc_s = nn.Sequential(
+            nn.Linear(s_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.LeakyReLU()
+        )
+        self.output = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 1)
+        )
+
+    def forward(self, x):
+        h = self.fc_s(x)
+        q = self.output(h)
+        return q
+    
+class PolicyActorNet(nn.Module):
+    def __init__(self, s_shape, a_shape, action_scale):
+        super(PolicyActorNet, self).__init__()
+        self.shared = nn.Sequential(
+            nn.Linear(s_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.LeakyReLU()
+        )
+        self.fc_mean = nn.Linear(64, a_shape)
+        self.fc_std = nn.Linear(64, a_shape)
+        self.action_scale = action_scale
+
+    def forward(self, x, k):
+        shared = self.shared(x)
+        mean = self.fc_mean(shared)
+        std = torch.exp(self.fc_std(shared))
+        normal_dist = Normal(mean, std)
+        action = normal_dist.sample()
+        activated_action = activate_A_func(action, k)
+        log_prob = normal_dist.log_prob(action).sum(-1)  # Adjust if necessary based on activation
+        return activated_action, log_prob
