@@ -6,7 +6,7 @@ import os
 
 output_path = './Output/'  # Replace with your output path
 process_method = 'Single'  # 'Single' or 'Multi'
-file_path = './Data/ALL/ALL_data_grouped_processed.xlsx'  # Replace with your file path
+file_path = '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed.xlsx'  # Replace with your file path
 drop_columns = ['BMGs', "Chemical composition"]
 target_columns = ['Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)']
 Save_path = output_path + 'ML_All/'

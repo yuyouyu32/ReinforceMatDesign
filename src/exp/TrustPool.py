@@ -6,16 +6,13 @@ from itertools import combinations
 from tqdm import tqdm
 
 from env.ML_model import ML_Model
-from env.enviroment import reward_func
-
-
-
+from config import *
 
 
 class TrustPool:
-    def __init__(self, init_data_path, target_clomuns, drop_columns, results_path):
-        self.models = ML_Model(init_data_path, drop_columns, target_clomuns, results_path)
-        self.data = pd.read_excel(init_data_path).drop(columns=drop_columns)
+    def __init__(self):
+        self.models = ML_Model(DataPath, DropColumns, TargetColumns, MLResultPath)
+        self.data = pd.read_excel(DataPath).drop(columns=DropColumns)
         self.fill_na_with_models()
 
 
@@ -92,10 +89,6 @@ class TrustPool:
 
 
 def unit_test():
-    data_path = '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed.xlsx'  # Replace with your file path
-    drop_columns = ['BMGs', "Chemical composition"]
-    target_columns = ['Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)','yield(MPa)', 'Modulus (GPa)', 'Ε(%)']
-    results_path = '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/results/ML_All'
     trust_pool = TrustPool(data_path, target_columns, drop_columns, results_path)
     # trust_pool.data.describe().to_excel('/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed_filled_des.xlsx')
     trust_pool.generate_experience_pool(10, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)

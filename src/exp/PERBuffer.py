@@ -2,8 +2,8 @@ import numpy as np
 import random
 
 
-from .ReplayBuffer import ReplayBuffer
-from .utils import *
+from exp.ReplayBuffer import ReplayBuffer
+from exp.utils import *
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     def __init__(self, size, alpha):
