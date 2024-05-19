@@ -68,13 +68,11 @@ def parse_result(rsp):
 
 def main():
     all_cost = 0
-    data = pd.read_excel('../results/random_search_result_filtered_similar_score.xlsx')
+    data = pd.read_excel('../results/random_search_result_filtered_similar.xlsx')
     data = data[['BMGs', 'Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)',  'similar_index']]
     data = data.sort_values(by='Ε(%)', ascending=False)
     data.reset_index(drop=True, inplace=True)
     for index, row in tqdm(data.iterrows(), total=data.shape[0]):
-        if index > 50:
-            break
         similarities = row['similar_index']
         data_prompt = str(row.drop('similar_index').to_dict())
         task_prompt = EvalueUser.format(rule=Rules, data=data_prompt, sim=similarities)
