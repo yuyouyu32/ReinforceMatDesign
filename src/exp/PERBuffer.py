@@ -5,8 +5,13 @@ import random
 from exp.ReplayBuffer import ReplayBuffer
 from exp.utils import *
 
+
+prioritized_replay_alpha=0.6
+prioritized_replay_beta0=0.4
+
+
 class PrioritizedReplayBuffer(ReplayBuffer):
-    def __init__(self, size, alpha):
+    def __init__(self, size, alpha: float=prioritized_replay_alpha):
         """Create Prioritized Replay buffer.
         Parameters
         ----------
@@ -49,7 +54,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             res.append(idx)
         return res
 
-    def sample(self, batch_size, beta):
+    def sample(self, batch_size, beta: float=prioritized_replay_beta0):
         """Sample a batch of experiences.
         compared to ReplayBuffer.sample
         it also returns importance weights and idxes
