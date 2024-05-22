@@ -28,7 +28,7 @@ class EnsembleDeepRVFL:
         self.activation = activation
         self.get_activation()
         self.random_seed = random_seed
-        self.set_random_seed()
+        self.random_state = np.random.RandomState(random_seed)
 
         self.n_layer = n_layer
         
@@ -45,10 +45,6 @@ class EnsembleDeepRVFL:
     def get_activation(self):
         a = Activation()
         self.activation_function = getattr(a, self.activation)
-
-    def set_random_seed(self):
-        np.random.seed(self.random_seed)
-
 
     def get_params(self, deep=True):
         """
@@ -80,7 +76,7 @@ class EnsembleDeepRVFL:
         for parameter, value in params.items():
             setattr(self, parameter, value)
         self.get_activation()
-        self.set_random_seed()
+        self.random_state = np.random.RandomState(self.random_seed)
         self.random_weights = []
         self.random_bias = []
         self.beta = []
@@ -201,9 +197,9 @@ class EnsembleDeepRVFL:
             mae = np.mean(np.abs(pred - label))
             return mae
 
-    @staticmethod
-    def get_random_vectors(m, n, scale_range):
-        x = (scale_range[1] - scale_range[0]) * np.random.random([m, n]) + scale_range[0]
+    def get_random_vectors(self, m, n, scale_range):
+        self.random_state.seed(self.random_seed)
+        x = (scale_range[1] - scale_range[0]) * self.random_state.random([m, n]) + scale_range[0]
         return x
 
     @staticmethod

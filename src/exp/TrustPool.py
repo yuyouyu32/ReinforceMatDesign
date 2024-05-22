@@ -1,18 +1,21 @@
-import os
-import pandas as pd
-import numpy as np
 import json
+import os
 from itertools import combinations
+
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
-from env.ML_model import ML_Model
 from config import *
+from env.enviroment import Enviroment
 
 
 class TrustPool:
     def __init__(self):
-        self.models = ML_Model(DataPath, DropColumns, TargetColumns, MLResultPath)
+        
         self.data = pd.read_excel(DataPath).drop(columns=DropColumns)
+        self.env = Enviroment()
+        self.models = self.env.models
         self.fill_na_with_models()
 
 
@@ -56,11 +59,15 @@ class TrustPool:
             abs_diff = np.abs(diff)
 
             if np.all(abs_diff <= threshold):
+                s, s_ , a = row_i.tolist(), row_j.tolist(), diff.tolist()
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_))
+                
                 diff_map = {
-                    's': row_i.tolist(),
-                    's_': row_j.tolist(),
-                    'a': diff.tolist(),
-                    'r': 0  # 假设reward暂时为0
+                    's': s.copy(),
+                    's_': s_.copy(),
+                    'a': a.copy(),
+                    'r': r,
+                    'done': done
                 }
 
                 for col in self.models.target_columns:
@@ -68,11 +75,14 @@ class TrustPool:
                     diff_map[f"{col}_"] = self.data.at[j, col]
 
                 # Record the reverse experience
+                s, s_ , a = row_j.tolist(), row_i.tolist(), (-diff).tolist()
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_))
                 diff_map_reverse = {
-                    's': row_j.tolist(),
-                    's_': row_i.tolist(),
-                    'a': (-diff).tolist(),
-                    'r': 0  # 假设reward暂时为0
+                    's': s.copy(),
+                    's_': s_.copy(),
+                    'a': a.copy(),
+                    'r': r,
+                    'done': done
                 }
 
                 for col in self.models.target_columns:
@@ -89,10 +99,10 @@ class TrustPool:
 
 
 def unit_test():
-    trust_pool = TrustPool(DataPath, TargetColumns, DropColumns, MLResultPath)
+    trust_pool = TrustPool()
     # trust_pool.data.describe().to_excel('/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed_filled_des.xlsx')
-    trust_pool.generate_experience_pool(10, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
+    trust_pool.generate_experience_pool(A_Scale, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
 
-
+# python -m exp.TrustPool
 if __name__ == '__main__':
     unit_test()

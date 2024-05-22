@@ -32,7 +32,7 @@ class BMGs():
         
         # Sort columns by the value in 's' and create the BMGs string
         sorted_cols = sorted(col_s_dict, key=lambda c: col_s_dict[c], reverse=True)
-        bmg_string = ''.join([f"{col}{col_s_dict[col]}" for col in sorted_cols if col_s_dict[col] != 0])
+        bmg_string = ''.join([f"{col}{round(col_s_dict[col], 2)}" for col in sorted_cols if col_s_dict[col] != 0])
         
         return bmg_string
     
