@@ -2,17 +2,19 @@ import json
 import os
 from itertools import combinations
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from tqdm import tqdm
 
+from BMGs import BMGs
 from config import *
 from env.enviroment import Enviroment
 
 
 class TrustPool:
     def __init__(self):
-        
         self.data = pd.read_excel(DataPath).drop(columns=DropColumns)
         self.env = Enviroment()
         self.models = self.env.models
@@ -20,7 +22,7 @@ class TrustPool:
 
 
     def fill_na_with_models(self):
-        best_models = self.models.get_best_models()
+        best_models = self.env.best_models
         for target_column in self.models.target_columns:
             X_pred = self.data[self.data[target_column].isna()].drop(columns=self.models.target_columns)
             if X_pred.empty:
@@ -34,6 +36,20 @@ class TrustPool:
             y_preds_adjusted = [max(min(y, max_value * 1.25), min_value * 0.75) for y in y_preds]
             
             self.data.loc[self.data[target_column].isna(), target_column] = y_preds_adjusted
+            
+    def check_valid_a(self, row_i, row_j, threshold):
+        non_zero_indices_i = np.nonzero(row_i)[0]
+        non_zero_indices_j = np.nonzero(row_j)[0]
+        
+        if np.array_equal(non_zero_indices_i, non_zero_indices_j):
+            if self.env.min_com_num <= len(non_zero_indices_i) <= self.env.max_com_num:
+                diff = row_i - row_j
+                abs_diff = np.abs(diff[non_zero_indices_i])
+                if np.all(abs_diff <= threshold):
+                    a = np.zeros(self.env.n_actions)
+                    a[:len(non_zero_indices_i)] = diff[non_zero_indices_i]
+                    return True, a
+        return False, None
 
 
     def generate_experience_pool(self, threshold, jsonl_path, rewrite=False):
@@ -54,55 +70,81 @@ class TrustPool:
         for i, j in tqdm(combinations(range(len(data_features)), 2), total=len(data_features) * (len(data_features) - 1) // 2):
             row_i = data_features[i]
             row_j = data_features[j]
-
-            diff = row_i - row_j
-            abs_diff = np.abs(diff)
-
-            if np.all(abs_diff <= threshold):
-                s, s_ , a = row_i.tolist(), row_j.tolist(), diff.tolist()
-                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_))
-                
+            
+            keep_flag, diff = self.check_valid_a(row_i, row_j, threshold)
+            if keep_flag:
+                s, s_ , a = row_i.tolist(), row_j.tolist(), diff.tolist() 
+                result = {col: self.data.at[i, col] for col in self.models.target_columns}
+                result_ = {col: self.data.at[j, col] for col in self.models.target_columns}
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), result, result_)
                 diff_map = {
                     's': s.copy(),
                     's_': s_.copy(),
                     'a': a.copy(),
                     'r': r,
-                    'done': done
+                    'done': done,
+                    'result': result,
+                    'result_': result_,
+                    'BMG': BMGs(s).bmg_s,
+                    'BMG_': BMGs(s_).bmg_s,
                 }
-
-                for col in self.models.target_columns:
-                    diff_map[col] = self.data.at[i, col]
-                    diff_map[f"{col}_"] = self.data.at[j, col]
 
                 # Record the reverse experience
                 s, s_ , a = row_j.tolist(), row_i.tolist(), (-diff).tolist()
-                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_))
+                result = {col: self.data.at[j, col] for col in self.models.target_columns}
+                result_ = {col: self.data.at[i, col] for col in self.models.target_columns}
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), result, result_)
                 diff_map_reverse = {
                     's': s.copy(),
                     's_': s_.copy(),
                     'a': a.copy(),
                     'r': r,
-                    'done': done
+                    'done': done,
+                    'result': result,
+                    'result_': result_,
+                    'BMG': BMGs(s).bmg_s,
+                    'BMG_': BMGs(s_).bmg_s,
                 }
-
-                for col in self.models.target_columns:
-                    diff_map_reverse[col] = self.data.at[j, col]
-                    diff_map_reverse[f"{col}_"] = self.data.at[i, col]
 
                 trust_exp_pool.append(diff_map)
                 trust_exp_pool.append(diff_map_reverse)
                 with open(jsonl_path, 'a') as f:
                     f.write(json.dumps(diff_map, ensure_ascii=False) + '\n')
                     f.write(json.dumps(diff_map_reverse, ensure_ascii=False) + '\n')
-                    
 
+def statistic_trust_pool(path):
+    with open(path, 'r') as file:
+        data = [json.loads(line) for line in file]
 
+    sorted_data = sorted(data, key=lambda x: x['r'])
+    with open(path, 'w') as file:
+        for item in sorted_data:
+            file.write(json.dumps(item, ensure_ascii=False) + '\n')
+    r_values = [item['r'] for item in sorted_data]
 
-def unit_test():
-    trust_pool = TrustPool()
-    # trust_pool.data.describe().to_excel('/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/ALL_data_grouped_processed_filled_des.xlsx')
-    trust_pool.generate_experience_pool(A_Scale, '/Users/yuyouyu/WorkSpace/Mine/ReinforceMatDesign/data/trust_pool.jsonl', rewrite=True)
+    r_values = [item['r'] for item in sorted_data]
+
+    plt.grid(False)
+    # 绘制 'r' 的分布图
+    plt.figure(figsize=(12, 8))
+    sns.histplot(r_values, bins=20, kde=True, color='skyblue', edgecolor='black')
+
+    # 添加平均线
+    mean_r = np.mean(r_values)
+    plt.axvline(mean_r, color='red', linestyle='dashed', linewidth=1)
+    plt.text(mean_r, plt.ylim()[1] * 0.9, f'Mean: {mean_r:.2f}', color='red')
+
+    # 设置标签和标题
+    plt.xlabel('Reward Value', fontsize=14)
+    plt.ylabel('Frequency', fontsize=14)
+    plt.title('Distribution of Reward Values', fontsize=16)
+    plt.savefig('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool_r_distribution.png', dpi=300)
+    
+def main():
+#     trust_pool = TrustPool()
+#     trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
+    statistic_trust_pool('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl')
 
 # python -m exp.TrustPool
 if __name__ == '__main__':
-    unit_test()
+    main()

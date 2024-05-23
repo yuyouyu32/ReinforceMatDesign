@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,7 @@ class Enviroment:
         # Initial Pool and constraints
         self.init_data = pd.read_excel(DataPath).drop(columns=DropColumns).drop(columns=TargetColumns)
         self.init_pool = self.init_data.values
-        self.max_com_num = min(self.init_data.astype(bool).sum(axis=1).max(), 7)
+        self.max_com_num = min(self.init_data.astype(bool).sum(axis=1).max(), N_Action)
         self.min_com_num = max(self.init_data.astype(bool).sum(axis=1).min(), 2)
 
         
@@ -199,7 +199,7 @@ class Enviroment:
             return False
         return True
 
-    def reward(self, s: np.ndarray, a: np.ndarray, s_: np.ndarray) -> Tuple[float, bool]:
+    def reward(self, s: np.ndarray, a: np.ndarray, s_: np.ndarray, result: Optional[Dict[str, float]]= None, result_: Optional[Dict[str, float]]= None) -> Tuple[float, bool]:
         """
         Calculate the reward based on the performance improvement and threshold achievement.
 
@@ -212,8 +212,10 @@ class Enviroment:
             float: reward
             bool: done
         """
-        result = self.target_func(s)
-        result_ = self.target_func(s_)
+        if not result:
+            result = self.target_func(s)
+        if not result_:
+            result_ = self.target_func(s_)
         # Phase 1 (ensure legal action and state vector)
         bmg_ = BMGs(s_, result_)
         base_matrix_ = bmg_.get_base_matrix()

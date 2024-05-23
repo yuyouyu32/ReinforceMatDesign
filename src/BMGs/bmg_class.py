@@ -13,7 +13,6 @@ class BMGs():
         """
         self.s = s
         self.properties = properties
-        df = pd.read_excel(DataPath)
         self.bmg_s = self._generate_BMGs_string()
         
     def _generate_BMGs_string(self):
