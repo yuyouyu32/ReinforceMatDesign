@@ -25,9 +25,7 @@ class Enviroment:
         self.init_data = pd.read_excel(DataPath).drop(columns=DropColumns).drop(columns=TargetColumns)
         self.init_pool = self.init_data.values
         self.max_com_num = min(self.init_data.astype(bool).sum(axis=1).max(), N_Action)
-        self.min_com_num = max(self.init_data.astype(bool).sum(axis=1).min(), 2)
-
-        
+        self.min_com_num = max(self.init_data.astype(bool).sum(axis=1).min(), 3)
     
     @staticmethod
     def define_matrix_thresholds(excel_file: str, percentile: float = 0.8) -> Tuple[Dict, Dict]:
@@ -91,10 +89,34 @@ class Enviroment:
         """
         s_ = s.copy()
         indexs = np.where(s != 0)[0]
-        assert len(a) == len(indexs)
-        s_[indexs] = s_[indexs] + a
+        assert len(a) >= len(indexs)
+        s_[indexs] = s_[indexs] + a[:len(indexs)]
         reward, done = self.reward(s, a, s_)
         return s_, reward, done
+    
+    
+    def get_random_legal_action(self, s: np.ndarray) -> np.ndarray:
+        """
+        Get a random legal action vector.
+        
+        Parameters:
+            s (np.ndarray): state vector
+        
+        Returns:
+            np.ndarray: action vector
+        """
+        iter = 1
+        k = np.count_nonzero(s)
+        while True:
+            a = np.zeros(N_Action)
+            action = np.random.rand(k)
+            action = (action - action.mean()) * A_Scale
+            a[:k] = action
+            s_ = self.step(s, a)[0]
+            if self.judge_a(a) and self.judge_s(s_):
+                break
+            iter += 1
+        return a
     
     def reset(self):
         """
@@ -107,11 +129,31 @@ class Enviroment:
         indexs = np.where(s != 0)[0]
         if len(indexs) < self.min_com_num or len(indexs) > self.max_com_num:
             s = self.reset() # Reset if the number of elements is out of range
-        noise = np.random.rand(len(indexs)) * A_Scale
-        noise = noise - noise.mean()
-        s = self.step(s, noise)[0]
-        if not self.judege_s(s):
-            s = self.reset()
+        # 50%的概率使用OptionalRestElement替换s中成分最小的元素，保证s中元素个数不变，同时也要保证OptionalRestElement中选中的元素不在s中
+        if np.random.rand() > 0.5:
+            s = self.replace_element(s)
+        return s
+    
+    def replace_element(self, s: np.ndarray) -> np.ndarray:
+        """
+        Replace the element with the smallest value in the state vector with an element from the optional rest elements.
+        
+        Parameters:
+            s (np.ndarray): state vector
+        
+        Returns:
+            np.ndarray: state vector
+        """
+        indexs = np.where(s != 0)[0]
+        min_index = np.argmin(s[indexs])
+        temp_value = s[indexs[min_index]]
+        s[indexs[min_index]] = 0
+        # TypeError: only integer scalar arrays can be converted to a scalar index
+        rest_elements = OptionalResetElement - set(np.array(CompositionColumns)[indexs])
+        new_element = random.choice(list(rest_elements))
+        s[CompositionColumns.index(new_element)] = temp_value
+        return s
+    
     
     def reset_by_constraint(self, mandatory_elements: Dict[str, Tuple[int]], optional_elements: Dict[str, Tuple[int]], k: int) -> np.ndarray:
         """
@@ -167,10 +209,7 @@ class Enviroment:
         
         return state_vector
         
-        
-    
-        
-    def judege_s(self, s: np.ndarray) -> bool:
+    def judge_s(self, s: np.ndarray) -> bool:
         """
         Judge the state vector.
         
@@ -184,7 +223,7 @@ class Enviroment:
             return False
         return True
     
-    def judge_a(self, s: np.ndarray, a: np.ndarray) -> bool:
+    def judge_a(self, a: np.ndarray) -> bool:
         """
         Judge the action vector.
         
@@ -223,7 +262,7 @@ class Enviroment:
         bmg = BMGs(s, result)
         base_matrix = bmg.get_base_matrix()
         
-        if not self.judege_s(s) or not self.judge_a(s, a) or base_matrix != base_matrix_:  # Illegal action or state vector
+        if not self.judge_s(s_) or not self.judge_a(a) or base_matrix != base_matrix_:  # Illegal action or state vector
             reward = -10
             return reward, True
 
@@ -287,7 +326,8 @@ def unit_test():
         'Y': (0, 10)
     } 
     for epoch in range(100):
-        s = env.reset_by_constraint(mandatory_elements, optional_elements, 5)
+        # s = env.reset_by_constraint(mandatory_elements, optional_elements, 5)
+        s = env.reset()
         for step in range(MaxStep):
             indexs = np.where(s != 0)[0]
             a = np.random.rand(len(indexs)) * A_Scale

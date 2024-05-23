@@ -1,15 +1,22 @@
+import os
+import sys
+import warnings
+
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import GridSearchCV, KFold
+
 from .config import *
-from sklearn.metrics import r2_score, mean_squared_error
-import warnings
-import sys, os
+from config import logging
+
+logger = logging.getLogger(__name__)
+
+
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
     os.environ["PYTHONWARNINGS"] = "ignore" # Also affect subprocesses
 
-import numpy as np
 
 class ModelEvaluatorKFold:
     def __init__(self, n_splits=5):
@@ -23,13 +30,13 @@ class ModelEvaluatorKFold:
         features = features.to_numpy()
         target = target.to_numpy()
         for model_name, model in self.models.items():
-            print(f"Evaluating {model_name} with K-fold cross-validation...")
+            logger.info(f"Evaluating {model_name} with K-fold cross-validation...")
             param_grid = self.params[model_name]
             
             grid_search = GridSearchCV(model, param_grid, cv=self.kf, scoring='neg_mean_squared_error',verbose=0, n_jobs=12)
-            print("{:=^40}".format(f" {model_name} Grid Search"))
+            logger.info("{:=^40}".format(f" {model_name} Grid Search"))
             grid_search.fit(features, target)
-            # print(pd.DataFrame(grid_search.cv_results_))
+            # logger.info(pd.DataFrame(grid_search.cv_results_))
             
             best_model = grid_search.best_estimator_
             self.best_models[model_name] = best_model
@@ -38,8 +45,8 @@ class ModelEvaluatorKFold:
             model.set_params(**best_params)
             r2, rmse, mape = self.eval_model(model, features, target)
             results[model_name] = {'best_params': best_params, 'rmse': rmse, 'r2': r2, 'mape': mape}
-            print(f"{model_name} Best Parameters: {best_params}\n", results[model_name])
-            print("{:=^40}".format(f" Best {model_name} Parameters Done"))
+            logger.info(f"{model_name} Best Parameters: {best_params}\n", results[model_name])
+            logger.info("{:=^40}".format(f" Best {model_name} Parameters Done"))
             
         return results
 
@@ -70,11 +77,11 @@ def unit_test():
     evaluator = ModelEvaluatorKFold(n_splits=5)
     evaluation_results = evaluator.evaluate_models(features, target)
     for model_name, result in evaluation_results.items():
-        print(f"Model: {model_name}")
-        print(f"Best Parameters: {result['best_params']}")
-        print(f"Best Mean Squared Error: {result['best_mse']}")
-        print(f"R2 Score: {result['r2']}")
-        print(f"Mean Absolute Percentage Error (MAPE): {result['mape']}\n")
+        logger.info(f"Model: {model_name}")
+        logger.info(f"Best Parameters: {result['best_params']}")
+        logger.info(f"Best Mean Squared Error: {result['best_mse']}")
+        logger.info(f"R2 Score: {result['r2']}")
+        logger.info(f"Mean Absolute Percentage Error (MAPE): {result['mape']}\n")
 
 if __name__ == "__main__":
     unit_test()

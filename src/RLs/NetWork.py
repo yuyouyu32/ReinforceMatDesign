@@ -22,15 +22,15 @@ class DeterActorNet(nn.Module):
             nn.Tanh()
         )
         self.action_scale = action_scale
-
+        
     def forward(self, x, k):
         x = self.fc(x)
-        a = activate_A_func(x, k) * torch.tensor(np.array(self.action_scale)).float().to(device)
+        a = activate_A_func(x, k) * self.action_scale
         return a
 
-class QNet(nn.Module):
+class DoubleQNet(nn.Module):
     def __init__(self, s_shape, a_shape):
-        super(QNet, self).__init__()
+        super(DoubleQNet, self).__init__()
         self.fc_s = nn.Sequential(
             nn.Linear(s_shape, 128),
             nn.LeakyReLU(),
@@ -51,7 +51,12 @@ class QNet(nn.Module):
             nn.Linear(128, 64),
             nn.LeakyReLU()
         )
-        self.output = nn.Sequential(
+        self.output1 = nn.Sequential(
+            nn.Linear(128, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 1)
+        )
+        self.output2 = nn.Sequential(
             nn.Linear(128, 32),
             nn.LeakyReLU(),
             nn.Linear(32, 1)
@@ -61,8 +66,9 @@ class QNet(nn.Module):
         h1 = self.fc_s(x)
         h2 = self.fc_a(a)
         cat = torch.cat([h1, h2], dim=1)
-        q = self.output(cat)
-        return q
+        q1 = self.output1(cat)
+        q2 = self.output2(cat)
+        return q1, q2
     
 class CriticNet(nn.Module):
     def __init__(self, s_shape, a_shape):

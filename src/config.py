@@ -14,6 +14,7 @@ Percentile = 0.8
 DoneRatio = 1.2
 MaxStep = 100
 Alpha = 0.6 # UBC 1 config
+OptionalResetElement = {'Ag', 'Ti', 'La', 'Ce', 'Gd', 'Y'}
 
 
 # PER Config
@@ -30,3 +31,28 @@ RewardWeight = {
     'Modulus (GPa)': 0.4,
     'Ε(%)': 0.4
 }
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+ExploreBases = [(
+    {
+        'Zr': (40, 70),
+        'Cu': (10, 25),
+        'Ni': (5, 15),
+        'Al': (5, 15)
+    },
+    {
+        'Ag': (0, 10),
+        'Ti': (0, 10),
+        'La': (0, 10),
+        'Ce': (0, 10),
+        'Gd': (0, 10),
+        'Y': (0, 10)
+    },
+    5)]

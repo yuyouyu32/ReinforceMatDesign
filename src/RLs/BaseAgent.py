@@ -13,6 +13,7 @@ from exp.ReplayBuffer import ReplayBuffer
 class BaseAgent(ABC):
     def __init__(self, use_per: bool = False) -> None:
         super(BaseAgent, self).__init__()
+        self.name = 'base_agent'
         self.use_per = use_per
         if self.use_per:
             self.buffer = PrioritizedReplayBuffer(PoolSize)
@@ -53,13 +54,17 @@ class BaseAgent(ABC):
         """Evaluate the current policy."""
         total_reward = 0.0
         for _ in range(episodes):
+            rewards = 0.0
             state = self.env.reset()
             done = False
-            while not done:
+            steps = 0
+            while not done or steps < MaxStep:
                 action = self.select_action(state, explore=False)
                 next_state, reward, done = self.env.step(state, action)
-                total_reward += reward
+                rewards += reward
                 state = next_state
+                steps += 1
+            total_reward += (rewards / steps)
         return total_reward / episodes
         
 

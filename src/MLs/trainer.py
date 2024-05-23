@@ -3,6 +3,9 @@ from dataloader.my_dataloader import CustomDataLoader
 from .ML_worker import ModelEvaluatorKFold
 import multiprocessing
 import os
+from config import logging
+logger = logging.getLogger(__name__)
+
 
 output_path = './Output/'  # Replace with your output path
 process_method = 'Single'  # 'Single' or 'Multi'
@@ -14,11 +17,11 @@ Save_path = output_path + 'ML_All/'
 def process_target(target_name, file_path, drop_columns, Save_path, target_columns):
     dataloader = CustomDataLoader(file_path, drop_columns, target_columns)
     features, target = dataloader.get_features_for_target(target_name)
-    print("{:=^80}".format(f" {target_name} Start"))
+    logger.info("{:=^80}".format(f" {target_name} Start"))
     evaluator = ModelEvaluatorKFold(n_splits=5)
     evaluation_results = evaluator.evaluate_models(features, target)
     results = pd.DataFrame(evaluation_results)
-    print(f"{target_name}:\n", results, "\n")
+    logger.info(f"{target_name}:\n", results, "\n")
     target_name = target_name.replace('/', '_')
     try:
         results.to_excel(Save_path + f"{target_name}_ml.xlsx")
@@ -26,7 +29,7 @@ def process_target(target_name, file_path, drop_columns, Save_path, target_colum
         import os
         os.makedirs(Save_path, exist_ok=True)
         results.to_excel(Save_path + f"{target_name}_ml.xlsx")
-    print("{:=^80}".format(f" {target_name} Done"))
+    logger.info("{:=^80}".format(f" {target_name} Done"))
 
 
 

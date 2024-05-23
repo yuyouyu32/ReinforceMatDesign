@@ -8,7 +8,9 @@ from xgboost import XGBRegressor
 
 from MLs.edRVFL import EnsembleDeepRVFL
 from dataloader.my_dataloader import CustomDataLoader
+from config import logging
 
+logger = logging.getLogger(__name__)
 
 class ML_Model:
     def __init__(self, data_path, drop_columns, target_columns, results_path):
@@ -26,7 +28,7 @@ class ML_Model:
                     best_models[target_column] = self._get_best_model(xlsx_path)
                     x, y = self.data.get_features_for_target(target_column)
                     best_models[target_column].fit(x.to_numpy(), y.to_numpy())
-                    print(f"Best model for {target_column} is {best_models[target_column].__class__.__name__}")
+                    logger.info(f"Best model for {target_column} is {best_models[target_column].__class__.__name__}")
         return best_models
 
     def _get_best_model(self, model_path):

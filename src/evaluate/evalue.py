@@ -6,15 +6,17 @@ import re
 import time
 
 import pandas as pd
-from evaluate.prompts import *
 from openai import OpenAI
 from tqdm import tqdm
 
+from config import logging
 
-import time
+from evaluate.prompts import *
+
+logger = logging.getLogger(__name__)
+
 MaxRetries = 10
 Delay = 15
-
 
 def retry_on_failure(max_retries: int = 3, delay: int = 1):
     def decorator(func):
@@ -25,7 +27,7 @@ def retry_on_failure(max_retries: int = 3, delay: int = 1):
                     return func(*args, **kwargs)
                 except Exception as e:
                     retries += 1
-                    print(f"Attempt {retries}/{max_retries} failed: {e}")
+                    logger.error(f"Attempt {retries}/{max_retries} failed: {e}")
                     time.sleep(delay)
             raise Exception(f"Failed after {max_retries} attempts")
         return wrapper
@@ -88,7 +90,7 @@ def main():
             data.loc[index, 'score'] = round(sum(scores) / len(scores), 2)
         data.to_excel('../results/random_search_result_filtered_similar_score.xlsx', index=False)
         time.sleep(random.randint(2, 3))
-    print('Cost: ', all_cost)
+    logger.info('Cost: ', all_cost)
     
 if __name__ == '__main__':
     main()
