@@ -107,10 +107,12 @@ class Enviroment:
         """
         iter = 1
         k = np.count_nonzero(s)
+        if not self.judge_s(s):
+            raise ValueError("Invalid state vector {s}, Please check the state vector.")
         while True:
             a = np.zeros(N_Action)
             action = np.random.rand(k)
-            action = (action - action.mean()) * A_Scale
+            action = (action - action.mean()) * (A_Scale /iter)
             a[:k] = action
             s_ = self.step(s, a)[0]
             if self.judge_a(a) and self.judge_s(s_):
@@ -129,7 +131,7 @@ class Enviroment:
         indexs = np.where(s != 0)[0]
         if len(indexs) < self.min_com_num or len(indexs) > self.max_com_num:
             s = self.reset() # Reset if the number of elements is out of range
-        # 50%的概率使用OptionalRestElement替换s中成分最小的元素，保证s中元素个数不变，同时也要保证OptionalRestElement中选中的元素不在s中
+        # 50% chance to replace the element with the smallest value
         if np.random.rand() > 0.5:
             s = self.replace_element(s)
         return s
@@ -153,8 +155,7 @@ class Enviroment:
         new_element = random.choice(list(rest_elements))
         s[CompositionColumns.index(new_element)] = temp_value
         return s
-    
-    
+      
     def reset_by_constraint(self, mandatory_elements: Dict[str, Tuple[int]], optional_elements: Dict[str, Tuple[int]], k: int) -> np.ndarray:
         """
         Reset the state vector based on the constraints.
@@ -306,7 +307,14 @@ class Enviroment:
                 reward += Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
 
         return reward, done
-                
+    
+    def save_bmgs(self, path):
+        """
+        Save the new BMGs to an Excel file.
+        """
+        if self.new_bmgs:
+            df = pd.DataFrame(self.new_bmgs)
+            df.to_excel(path, index=False)
 
 
 def unit_test():
