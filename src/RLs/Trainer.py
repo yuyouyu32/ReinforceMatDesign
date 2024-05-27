@@ -1,9 +1,12 @@
 import os
-from tqdm import tqdm
+
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+from typing import Optional
+
 from BMGs import BMGs
-from config import MaxStep, N_Action, N_State, logging, ExploreBases
+from config import ExploreBases, MaxStep, N_Action, N_State, logging
 from env.enviroment import Enviroment
 from RLs.BaseAgent import BaseAgent
 from RLs.DDPG import DDPGAgent
@@ -27,14 +30,16 @@ class Trainer:
             os.makedirs(self.log_dir)
         self.writer = SummaryWriter(log_dir=self.log_dir)
 
-    def train(self):
+    def train(self, explore_base_index: Optional[int] = None):
         total_steps = 0
         reward_record = []
         c_loss_record = []
         a_loss_record = []
         for episode in tqdm(range(self.episodes)):
-            # state = self.env.reset_by_constraint(**ExploreBases[0])
-            state = self.env.reset()
+            if explore_base_index is None:
+                state = self.env.reset()
+            else:
+                state = self.env.reset_by_constraint(*ExploreBases[explore_base_index])
             done = False
             episode_step = 0
             episode_reward = 0
@@ -43,7 +48,7 @@ class Trainer:
 
                 action = self.agent.select_action(state)
                 next_state, reward, done = self.env.step(state, action)
-                if done and reward != -10:
+                if done and reward != -1:
                     logger.info(f"Find New BMGs: {BMGs(next_state).bmg_s}")
                     self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
                 self.agent.store_experience(state, action, reward, next_state, done)
@@ -78,12 +83,15 @@ class Trainer:
         self.writer.close()
 
     def save_by_episode(self, episode):
-        self.agent.save_model(self.agent.actor, self.save_path + f"{self.agent.name}_actor.{episode}.pth")
-        self.agent.save_model(self.agent.critic, self.save_path + f"{self.agent.name}_critic.{episode}.pth")
+        save_path = os.path.join(self.save_path, f"episode_{episode}")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        self.agent.save_model(self.agent.actor, save_path + f"/{self.agent.name}_actor.pth")
+        self.agent.save_model(self.agent.critic, save_path + f"/{self.agent.name}_critic.pth")
     
     def save(self):
-        self.agent.save_model(self.agent.actor, self.save_path + f"{self.agent.name}_actor.pth")
-        self.agent.save_model(self.agent.critic, self.save_path + f"{self.agent.name}_critic.pth")
+        self.agent.save_model(self.agent.actor, self.save_path + f"/{self.agent.name}_actor.pth")
+        self.agent.save_model(self.agent.critic, self.save_path + f"/{self.agent.name}_critic.pth")
 
     def load(self, critic_path, actor_path):
         self.agent.load_model(self.agent.actor, actor_path)

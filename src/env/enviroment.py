@@ -22,7 +22,7 @@ class Enviroment:
         # Record new BMGs
         self.new_bmgs = []
         # Initial Pool and constraints
-        self.init_data = pd.read_excel(DataPath).drop(columns=DropColumns).drop(columns=TargetColumns)
+        self.init_data = pd.read_excel(DataPath).drop(columns=DropColumns).drop(columns=TargetColumns)  
         self.init_pool = self.init_data.values
         self.max_com_num = min(self.init_data.astype(bool).sum(axis=1).max(), N_Action)
         self.min_com_num = max(self.init_data.astype(bool).sum(axis=1).min(), 3)
@@ -105,10 +105,10 @@ class Enviroment:
         Returns:
             np.ndarray: action vector
         """
-        iter = 1
-        k = np.count_nonzero(s)
         if not self.judge_s(s):
             raise ValueError("Invalid state vector {s}, Please check the state vector.")
+        iter = 1
+        k = np.count_nonzero(s)
         while True:
             a = np.zeros(N_Action)
             action = np.random.rand(k)
@@ -220,7 +220,7 @@ class Enviroment:
         Returns:
             bool: True if the state vector is valid, False otherwise
         """
-        if abs(sum(s) - 100) > 0.1 or s.min() < 0 or s.max() > 100:
+        if abs(sum(s) - 100.0) > 0.25 or s.min() < 0 or s.max() > 100:
             return False
         return True
     
@@ -259,17 +259,14 @@ class Enviroment:
         # Phase 1 (ensure legal action and state vector)
         bmg_ = BMGs(s_, result_)
         base_matrix_ = bmg_.get_base_matrix()
-        
-        bmg = BMGs(s, result)
-        base_matrix = bmg.get_base_matrix()
-        
-        if not self.judge_s(s_) or not self.judge_a(a) or base_matrix != base_matrix_:  # Illegal action or state vector
+
+        if not self.judge_s(s_) or not self.judge_a(a):  # Illegal action or state vector
             reward = -10
-            return reward, True
+            return reward / 10, True
 
         # Calculate the reward based on performance improvement and threshold achievement
         reward = 0
-        thresholds = self.matrix_thresholds.get(base_matrix, self.matrix_thresholds['New'])
+        thresholds = self.matrix_thresholds.get(base_matrix_, self.matrix_thresholds['New'])
         thresholds['Dmax(mm)'] = min(5, thresholds['Dmax(mm)']) # Limit the maximum value of Dmax(mm) to 5
         done_count, weight_count = 0, 0
         for target, weight in RewardWeight.items():
@@ -306,7 +303,7 @@ class Enviroment:
                 self.exist_bmgs[bmg_.bmg_s] += 1
                 reward += Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
 
-        return reward, done
+        return reward / 10, done
     
     def save_bmgs(self, path):
         """
@@ -319,6 +316,9 @@ class Enviroment:
 
 def unit_test():
     env = Enviroment()
+    for s in env.init_pool:
+        assert env.judge_s(s)
+    print('len(env.init_pool):', len(env.init_pool))
     mandatory_elements = {
     'Zr': (40, 70),
     'Cu': (10, 25),

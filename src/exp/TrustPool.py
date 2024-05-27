@@ -141,8 +141,8 @@ def statistic_trust_pool(path):
     plt.savefig('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool_r_distribution.png', dpi=300)
     
 def main():
-#     trust_pool = TrustPool()
-#     trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
+    trust_pool = TrustPool()
+    trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
     statistic_trust_pool('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl')
 
 # python -m exp.TrustPool
