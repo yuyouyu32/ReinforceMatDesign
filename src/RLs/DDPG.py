@@ -50,7 +50,7 @@ class DDPGAgent(BaseAgent):
     def train_step(self, batch_size):
         if not self.use_per:
             states, actions, rewards, next_states, dones = self.sample_experiences(batch_size)
-            weights, batch_idxes = np.ones_like(rewards), None
+            weights, batch_idxes = torch.FloatTensor(np.ones_like(rewards)).to(device), None
         else:
             states, actions, rewards, next_states, dones, weights, batch_idxes = self.sample_experiences(batch_size)
             weights = np.sqrt(weights)
@@ -111,3 +111,11 @@ class DDPGAgent(BaseAgent):
         self.critic_scheduler.step()
         
         return critic_loss.item(), actor_loss.item()
+
+def unit_test():
+    agent = DDPGAgent(29, 5, use_per=True)
+    print(agent.select_action(np.random.rand(10), explore=False))
+
+# python -m RLs.DDPG
+if __name__ == '__main__':
+    unit_test()
