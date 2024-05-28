@@ -20,7 +20,16 @@ class DeterActorNet(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(128, a_shape),
             nn.Tanh()
-        )   
+        ) 
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def forward(self, x, k):
         x = self.fc(x)
         a = activate_A_func(x, k)
@@ -63,6 +72,14 @@ class DoubleQNet(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(32, 1)
         )
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x, a):
         h1 = self.fc_s(x)

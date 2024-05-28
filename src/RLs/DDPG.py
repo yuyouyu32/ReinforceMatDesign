@@ -113,8 +113,10 @@ class DDPGAgent(BaseAgent):
         return critic_loss.item(), actor_loss.item()
 
 def unit_test():
-    agent = DDPGAgent(29, 5, use_per=True)
-    print(agent.select_action(np.random.rand(10), explore=False))
+    from config import N_Action, N_State
+    agent = DDPGAgent(N_State, N_Action, use_per=True)
+    s = agent.env.reset()
+    print(agent.select_action(s, explore=False))
 
 # python -m RLs.DDPG
 if __name__ == '__main__':
