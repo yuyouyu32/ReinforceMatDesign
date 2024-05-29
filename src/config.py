@@ -17,13 +17,14 @@ Alpha = 0.6 # UBC 1 config
 OptionalResetElement = {'Ag', 'Ti', 'La', 'Ce', 'Gd', 'Y'}
 
 
-# PER Config
-TrustPoolPath = '../data/trust_pool.jsonl'
+# Exp Config
+TrustPoolPath = '../exp_pool/trust_pool.jsonl'
 PoolSize = 50000
 
 # Reward cnofig
 RewardWeight = {
-    'Dmax(mm)': 0.2,
+    'Dmax(mm)': 0.1,
+    'Tg/Tl': 0.1,
     'Tg(K)': 0,
     'Tx(K)': 0,
     'Tl(K)': 0,
@@ -31,6 +32,7 @@ RewardWeight = {
     'Modulus (GPa)': 0.4,
     'Ε(%)': 0.4
 }
+DoneTargets = {'Modulus (GPa)', 'Ε(%)'}
 
 import logging
 

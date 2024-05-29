@@ -5,11 +5,15 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from typing import Optional
 
-from BMGs import BMGs
 from config import ExploreBases, MaxStep, N_Action, N_State, logging
 from env.enviroment import Enviroment
 from RLs.BaseAgent import BaseAgent
 from RLs.DDPG import DDPGAgent
+import numpy as np
+from collections import deque
+
+def moving_average(data, window_size):
+    return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
 logger = logging.getLogger(__name__)
 
@@ -29,28 +33,35 @@ class Trainer:
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         self.writer = SummaryWriter(log_dir=self.log_dir)
+        self.window_size = 10
+        self.reward_record = []
+        self.c_loss_record = []
+        self.a_loss_record = []
+        
+    def reset_state(self, explore_base_index):
+        if explore_base_index is None:
+            state = self.env.reset()
+        else:
+            state = self.env.reset_by_constraint(*ExploreBases[explore_base_index])
+        return state
 
     def train(self, explore_base_index: Optional[int] = None):
         total_steps = 0
-        reward_record = []
-        c_loss_record = []
-        a_loss_record = []
+        raw_reward_record = deque(maxlen=self.window_size)
+        raw_c_loss_record = deque(maxlen=self.window_size)
+        raw_a_loss_record = deque(maxlen=self.window_size)
+
         for episode in tqdm(range(self.episodes)):
-            if explore_base_index is None:
-                state = self.env.reset()
-            else:
-                state = self.env.reset_by_constraint(*ExploreBases[explore_base_index])
+            state = self.reset_state(explore_base_index)
             done = False
             episode_step = 0
             episode_reward = 0
             episode_c_loss, episode_a_loss = 0, 0
-            while not done and episode_step <= MaxStep:
 
+            while not done and episode_step <= MaxStep:
                 action = self.agent.select_action(state)
                 next_state, reward, done = self.env.step(state, action)
-                if done and reward != -1:
-                    logger.info(f"Find New BMGs: {BMGs(next_state).bmg_s}")
-                    self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
+                        
                 self.agent.store_experience(state, action, reward, next_state, done)
 
                 state = next_state
@@ -62,24 +73,44 @@ class Trainer:
                     c_loss, a_loss = self.agent.train_step(self.batch_size)
                     episode_c_loss += c_loss
                     episode_a_loss += a_loss
+                if done:
+                    if reward in {-1, -0.5}:
+                        state = self.reset_state(explore_base_index)
+                        done = False
+                    else:
+                        episode_reward = reward * episode_step  # Reward is the final reward
+                        self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
+                        
+
             if total_steps >= self.start_timesteps:
                 average_reward = episode_reward / episode_step
                 average_c_loss = episode_c_loss / episode_step
                 average_a_loss = episode_a_loss / episode_step
-                reward_record.append(average_reward)
-                c_loss_record.append(average_c_loss)
-                a_loss_record.append(average_a_loss)
-                # Add to TensorBoard
-                self.writer.add_scalar('Reward/Average', average_reward, episode)
-                self.writer.add_scalar('Loss/Critic', average_c_loss, episode)
-                self.writer.add_scalar('Loss/Actor', average_a_loss, episode)
-            if episode % self.log_episodes == 0 and episode != 0 and total_steps >= self.start_timesteps:
-                logger.info(f"Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}")
-                logger.info(f"Critic Loss: {average_c_loss}, Actor Loss: {average_a_loss}")
-            if episode % self.save_episodes == 0 and episode != 0 and total_steps >= self.start_timesteps:
+                self.reward_record.append(average_reward)
+                self.c_loss_record.append(average_c_loss)
+                self.a_loss_record.append(average_a_loss)
+                raw_reward_record.append(average_reward)
+                raw_c_loss_record.append(average_c_loss)
+                raw_a_loss_record.append(average_a_loss)
+
+                if len(raw_reward_record) == self.window_size:
+                    smoothed_reward = moving_average(list(raw_reward_record), self.window_size)[-1]
+                    smoothed_c_loss = moving_average(list(raw_c_loss_record), self.window_size)[-1]
+                    smoothed_a_loss = moving_average(list(raw_a_loss_record), self.window_size)[-1]
+
+                    # Add to TensorBoard
+                    self.writer.add_scalar('Reward/Average', smoothed_reward, episode)
+                    self.writer.add_scalar('Loss/Critic', smoothed_c_loss, episode)
+                    self.writer.add_scalar('Loss/Actor', smoothed_a_loss, episode)
+
+            if episode % self.log_episodes == 0 and len(raw_reward_record) == self.window_size:
+                logger.info(f"Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(smoothed_reward, 2)}")
+                logger.info(f"Critic Loss: {smoothed_c_loss}, Actor Loss: {smoothed_a_loss}")
+
+            if episode % self.save_episodes == 0 and total_steps >= self.start_timesteps:
                 self.save_by_episode(episode)
 
-        self.save_logs(reward_record, c_loss_record, a_loss_record)
+        self.save_logs(self.reward_record, self.c_loss_record, self.a_loss_record)
         self.writer.close()
 
     def save_by_episode(self, episode):

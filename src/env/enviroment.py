@@ -8,6 +8,9 @@ import pandas as pd
 from BMGs import BMGs
 from config import *
 from env.ML_model import ML_Model
+from config import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Enviroment:
@@ -45,9 +48,11 @@ class Enviroment:
         exist_bmgs = {composition: 0 for composition in df['Chemical composition'].unique().tolist()}
         # Identify the base matrix for each row
         df = df.drop(columns=DropColumns)
-        df['Base_Matrix'] = df.drop(columns=TargetColumns).iloc[:, 1:].idxmax(axis=1)
+        df['Tg/Tl'] = df['Tg(K)'] / df['Tl(K)']
+        target_columns = TargetColumns + ['Tg/Tl']
+        df['Base_Matrix'] = df.drop(columns=target_columns).iloc[:, 1:].idxmax(axis=1)
         # Use the Base_Matrix values to groupby, then use the percentile to find the percentile of each group, only for TargetColumns, to get a thresholds dict
-        matrix_thresholds = {group: data[TargetColumns].quantile(percentile).to_dict() for group, data in df.groupby('Base_Matrix')}
+        matrix_thresholds = {group: data[target_columns].quantile(percentile).to_dict() for group, data in df.groupby('Base_Matrix')}
         matrix_thresholds = pd.DataFrame(matrix_thresholds).T
         # Add a new row for new BMGs with a specified data type
         matrix_thresholds.loc['New'] = pd.Series(dtype=float)
@@ -256,24 +261,29 @@ class Enviroment:
             result = self.target_func(s)
         if not result_:
             result_ = self.target_func(s_)
+        result['Tg/Tl'] = result['Tg(K)'] / result['Tl(K)']
+        result_['Tg/Tl'] = result_['Tg(K)'] / result_['Tl(K)']
         # Phase 1 (ensure legal action and state vector)
+        bmg = BMGs(s, result)
+        base_matrix = bmg.get_base_matrix()
         bmg_ = BMGs(s_, result_)
         base_matrix_ = bmg_.get_base_matrix()
 
         if not self.judge_s(s_) or not self.judge_a(a):  # Illegal action or state vector
-            reward = -10
-            return reward / 10, True
-
+            return -1, True
+        if base_matrix != base_matrix_:
+            return -0.5, True
+        
         # Calculate the reward based on performance improvement and threshold achievement
         reward = 0
         thresholds = self.matrix_thresholds.get(base_matrix_, self.matrix_thresholds['New'])
         thresholds['Dmax(mm)'] = min(5, thresholds['Dmax(mm)']) # Limit the maximum value of Dmax(mm) to 5
-        done_count, weight_count = 0, 0
+        thresholds['Tg/Tl'] = min(0.6, thresholds['Tg/Tl'])
+        done_count = 0
         for target, weight in RewardWeight.items():
             if weight > 0:
-                weight_count += 1
-                current_value = result_.get(target, 0)
-                previous_value = result.get(target, 0)
+                current_value = result_[target]
+                previous_value = result[target]
                 threshold = thresholds[target]
                 # Calculate improvement ratio
                 improvement_ratio = (current_value - previous_value) / threshold
@@ -281,29 +291,30 @@ class Enviroment:
                 # Check if the current value meets or exceeds the threshold
                 meets_threshold = current_value >= threshold
                 
-                if current_value >= threshold * DoneRatio:
+                if target in DoneTargets and current_value >= threshold * DoneRatio:
                     done_count += 1
                 # Compute component of reward
                 if meets_threshold:
-                    reward += 5 # Reward for meeting the threshold
-                    reward += weight * improvement_ratio * 2  # Double the reward if the threshold is met
+                    reward = reward + 5 * weight # Reward for meeting the threshold
+                    reward += weight * improvement_ratio * 2 # Double the reward if the threshold is met
                 else:
                     reward += weight * improvement_ratio
-        if done_count == weight_count:
+        if done_count == len(DoneTargets):
             done = True
         else:
             done = False
         if done:
             if self.exist_bmgs.get(bmg_.bmg_s, 0) == 0:
                 self.exist_bmgs[bmg_.bmg_s] = 1
-                reward += 10
+                reward += 5
                 result_['BMGs'] = bmg_.bmg_s
                 self.new_bmgs.append(result_)
+                logger.info(f"Find New BMGs: {bmg_.bmg_s}")
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
                 reward += Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
-
-        return reward / 10, done
+        reward = reward / 10
+        return reward, done
     
     def save_bmgs(self, path):
         """
@@ -319,32 +330,33 @@ def unit_test():
     for s in env.init_pool:
         assert env.judge_s(s)
     print('len(env.init_pool):', len(env.init_pool))
-    mandatory_elements = {
-    'Zr': (40, 70),
-    'Cu': (10, 25),
-    'Ni': (5, 15),
-    'Al': (5, 15)
-    }
-    optional_elements = {
-        'Ag': (0, 10),
-        'Ti': (0, 10),
-        'La': (0, 10),
-        'Ce': (0, 10),
-        'Gd': (0, 10),
-        'Y': (0, 10)
-    } 
-    for epoch in range(100):
-        # s = env.reset_by_constraint(mandatory_elements, optional_elements, 5)
-        s = env.reset()
-        for step in range(MaxStep):
-            indexs = np.where(s != 0)[0]
-            a = np.random.rand(len(indexs)) * A_Scale
-            a = a - a.mean()
-            s_, r, done = env.step(s, a)
-            if done:
-                print(r, done)
-                break
-            s = s_
+    print(env.matrix_thresholds)
+    # mandatory_elements = {
+    # 'Zr': (40, 70),
+    # 'Cu': (10, 25),
+    # 'Ni': (5, 15),
+    # 'Al': (5, 15)
+    # }
+    # optional_elements = {
+    #     'Ag': (0, 10),
+    #     'Ti': (0, 10),
+    #     'La': (0, 10),
+    #     'Ce': (0, 10),
+    #     'Gd': (0, 10),
+    #     'Y': (0, 10)
+    # } 
+    # for epoch in range(100):
+    #     # s = env.reset_by_constraint(mandatory_elements, optional_elements, 5)
+    #     s = env.reset()
+    #     for step in range(MaxStep):
+    #         indexs = np.where(s != 0)[0]
+    #         a = np.random.rand(len(indexs)) * A_Scale
+    #         a = a - a.mean()
+    #         s_, r, done = env.step(s, a)
+    #         if done:
+    #             print(r, done)
+    #             break
+    #         s = s_
 
 # python -m env.enviroment
 if __name__ == '__main__':
