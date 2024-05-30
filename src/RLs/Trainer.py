@@ -1,19 +1,17 @@
 import os
+from collections import deque
+from typing import Optional
 
+import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from typing import Optional
 
 from config import ExploreBases, MaxStep, N_Action, N_State, logging
 from env.enviroment import Enviroment
 from RLs.BaseAgent import BaseAgent
 from RLs.DDPG import DDPGAgent
-import numpy as np
-from collections import deque
-
-def moving_average(data, window_size):
-    return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
+from RLs.utils import moving_average
 
 logger = logging.getLogger(__name__)
 

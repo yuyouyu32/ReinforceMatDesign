@@ -1,5 +1,5 @@
 import torch
-import torch.nn as nn
+import numpy as np
 
 def activate_A_func(a: torch.Tensor, k: torch.Tensor):
     batch_size, feature_size = a.size()
@@ -19,6 +19,9 @@ def activate_A_func(a: torch.Tensor, k: torch.Tensor):
             
         activated[i] = top_k_values
     return activated
+
+def moving_average(data, window_size):
+    return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
 def unit_test():
     batch_size = 3
