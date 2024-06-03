@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.ndimage import gaussian_filter1d
 from tqdm import tqdm
 
 from BMGs import BMGs
@@ -125,24 +126,32 @@ def statistic_trust_pool(path):
     r_values = [item['r'] for item in sorted_data]
 
     plt.grid(False)
+    # 平滑r的曲线
+    r_values = gaussian_filter1d(r_values, sigma=20)
     # 绘制 'r' 的分布图
     plt.figure(figsize=(12, 8))
-    sns.histplot(r_values, bins=20, kde=True, color='skyblue', edgecolor='black')
+    sns.histplot(r_values, bins=20, kde=True, color='#53A6D9',edgecolor='None', alpha=0.3, linewidth=0.5)
 
     # 添加平均线
     mean_r = np.mean(r_values)
-    plt.axvline(mean_r, color='red', linestyle='dashed', linewidth=1)
-    plt.text(mean_r, plt.ylim()[1] * 0.9, f'Mean: {mean_r:.2f}', color='red')
+    plt.axvline(mean_r, color='#4F1D61', linestyle='dashed', linewidth=1)
+    plt.text(mean_r * 1.2 , plt.ylim()[1] * 0.9, f'Mean: {mean_r:.2f}', color='#4F1D61')
 
     # 设置标签和标题
     plt.xlabel('Reward Value', fontsize=14)
     plt.ylabel('Frequency', fontsize=14)
-    plt.title('Distribution of Reward Values', fontsize=16)
-    plt.savefig('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool_r_distribution.png', dpi=300)
+    plt.xticks(rotation=45, ha='right', fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.legend([],[], frameon=False)  # Remove the legend created by hue
+    plt.tight_layout()  # Adjust layout to make room for the rotated x-axis labels
+    # plt.title('Distribution of Reward Values', fontsize=16)
+    plt.savefig('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool_r_distribution.png', dpi=800)
     
 def main():
-    trust_pool = TrustPool()
-    trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
+    # trust_pool = TrustPool()
+    # trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
     statistic_trust_pool('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl')
 
 # python -m exp.TrustPool
