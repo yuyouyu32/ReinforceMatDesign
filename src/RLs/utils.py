@@ -23,6 +23,22 @@ def activate_A_func(a: torch.Tensor, k: torch.Tensor):
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
+
+class OrnsteinUhlenbeckNoise:
+    def __init__(self, mu):
+        self.theta, self.dt, self.sigma = 0.1, 0.01, 0.1
+        self.mu = mu
+        self.x_prev = np.zeros_like(self.mu)
+
+    def __call__(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
+                self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        self.x_prev = x
+        return x
+    
+    def reset(self):
+        self.x_prev = np.zeros_like(self.mu)
+
 def unit_test():
     batch_size = 3
     feature_size = 7
@@ -32,6 +48,9 @@ def unit_test():
     activated = activate_A_func(a, k)
     print(activated)
     print(sum(activated[0]))
+    ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(1))
+    for i in range(10):
+        print(ou_noise())
     
 # python -m RLs.utils
 if __name__ == '__main__':

@@ -141,6 +141,22 @@ class Enviroment:
             s = self.replace_element(s)
         return s
     
+    def reset_by_random_state(self, random_state: np.random.RandomState) -> np.ndarray:
+        """
+        Reset the state vector randomly. (In the initial pool)
+        
+        Returns:
+            np.ndarray: state vector
+        """
+        s = self.init_pool[random_state.randint(0, self.init_pool.shape[0])]
+        indexs = np.where(s != 0)[0]
+        if len(indexs) < self.min_com_num or len(indexs) > self.max_com_num:
+            s = self.reset() # Reset if the number of elements is out of range
+        # 50% chance to replace the element with the smallest value
+        if random_state.rand() > 0.5:
+            s = self.replace_element(s)
+        return s
+    
     def replace_element(self, s: np.ndarray) -> np.ndarray:
         """
         Replace the element with the smallest value in the state vector with an element from the optional rest elements.
@@ -286,7 +302,8 @@ class Enviroment:
                 previous_value = result[target]
                 threshold = thresholds[target]
                 # Calculate improvement ratio
-                improvement_ratio = (current_value - previous_value) / threshold
+                improvement_ratio = (current_value - previous_value) / max(threshold, previous_value)
+                smooth_improvement_ratio = np.tanh(improvement_ratio)  # Smooth the improvement ratio
 
                 # Check if the current value meets or exceeds the threshold
                 meets_threshold = current_value >= threshold
@@ -296,9 +313,9 @@ class Enviroment:
                 # Compute component of reward
                 if meets_threshold:
                     reward = reward + 5 * weight # Reward for meeting the threshold
-                    reward += weight * improvement_ratio * 2 # Double the reward if the threshold is met
-                else:
-                    reward += weight * improvement_ratio
+
+                reward += (weight * smooth_improvement_ratio)
+                
         if done_count == len(DoneTargets):
             done = True
         else:
@@ -309,7 +326,6 @@ class Enviroment:
                 reward += 5
                 result_['BMGs'] = bmg_.bmg_s
                 self.new_bmgs.append(result_)
-                logger.info(f"Find New BMGs: {bmg_.bmg_s}")
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
                 reward += Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])

@@ -4,10 +4,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from config import A_Scale
+from config import A_Scale, N_Action
 from RLs.BaseAgent import BaseAgent
 from RLs.NetWork import DeterActorNet, DoubleQNet, device
-
+from .utils import OrnsteinUhlenbeckNoise
 
 class DDPGAgent(BaseAgent):
     def __init__(self, state_dim, action_dim, use_per: bool = False, use_trust: bool = False):
@@ -22,27 +22,29 @@ class DDPGAgent(BaseAgent):
         self.critic = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-4)
         self.critic_scheduler = ReduceLROnPlateau(self.critic_optimizer, mode='min', factor=0.9, patience=20)
         
         self.action_scale = A_Scale
         self.discount = 0.99
         self.tau = 0.005
-        self.epsilon = 1.0
+        # Noise config
+        self.noise = OrnsteinUhlenbeckNoise(np.zeros(action_dim))
+        self.noise.sigma = 0.2 # Initial noise level
         self.epsilon_decay = 0.995
-        self.epsilon_min = 0.15
+        self.epsilon_min = 0.05
+
 
     def select_action(self, state: np.ndarray, explore: bool=True):
-        if explore and np.random.rand() < self.epsilon:
-            action = self.env.get_random_legal_action(state)
-            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-        else:
-            state = torch.FloatTensor(state.reshape(1, -1) / 100.0).to(self.device)
-            k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
-            k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
-            action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
-            action *= self.action_scale
-
+        state = torch.FloatTensor(state.reshape(1, -1) / 100.0).to(self.device)
+        k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
+        k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
+        action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
+        action *= self.action_scale
+        if explore:
+            noise = self.noise()  # Get noise from Ornstein-Uhlenbeck process
+            action += noise  # Add noise to the action
+            self.noise.sigma = max(self.epsilon_min, self.noise.sigma * self.epsilon_decay)  # Decay the noise
         return action
 
 

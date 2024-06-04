@@ -198,7 +198,6 @@ class EnsembleDeepRVFL:
             return mae
 
     def get_random_vectors(self, m, n, scale_range):
-        self.random_state.seed(self.random_seed)
         x = (scale_range[1] - scale_range[0]) * self.random_state.random([m, n]) + scale_range[0]
         return x
 

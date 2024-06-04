@@ -106,15 +106,14 @@ class BaseAgent(ABC):
         """Load the model parameters."""
         model.load_state_dict(torch.load(path))
     
-    def evaluate_policy(self, episodes: int = 10) -> float:
+    def evaluate_policy(self, episodes: int = 5) -> float:
         """Evaluate the current policy."""
         total_reward = 0.0
         for _ in range(episodes):
             rewards = 0.0
             state = self.env.reset()
-            done = False
             steps = 0
-            while not done or steps < MaxStep:
+            while steps < MaxStep:
                 action = self.select_action(state, explore=False)
                 next_state, reward, done = self.env.step(state, action)
                 rewards += reward

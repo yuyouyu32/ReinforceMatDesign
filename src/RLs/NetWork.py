@@ -90,29 +90,45 @@ class DoubleQNet(nn.Module):
         return q1, q2
 
     
-class CriticNet(nn.Module):
-    def __init__(self, s_shape, a_shape):
-        super(CriticNet, self).__init__()
+class QNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(QNetwork, self).__init__()
         self.fc_s = nn.Sequential(
-            nn.Linear(s_shape, 128),
+            nn.Linear(state_dim, 256),
             nn.LeakyReLU(),
-            nn.Linear(128, 256),
+            nn.Linear(256, 512),
             nn.LeakyReLU(),
-            nn.Linear(256, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(512, 256),
             nn.LeakyReLU()
         )
-        self.output = nn.Sequential(
-            nn.Linear(64, 32),
+        self.fc_a = nn.Sequential(
+            nn.Linear(action_dim, 256),
             nn.LeakyReLU(),
-            nn.Linear(32, 1)
+            nn.Linear(256, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.LeakyReLU()
         )
+        self.fc_cat = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 1)
+        )
+        self._initialize_weights()
 
-    def forward(self, x):
-        h = self.fc_s(x)
-        q = self.output(h)
-        return q
+    def forward(self, state, action):
+        state_out = self.fc_s(state)
+        action_out = self.fc_a(action)
+        cat = torch.cat([state_out, action_out], dim=1)
+        q_value = self.fc_cat(cat)
+        return q_value
+    
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
     
 class PolicyActorNet(nn.Module):
     def __init__(self, s_shape, a_shape, action_scale):
