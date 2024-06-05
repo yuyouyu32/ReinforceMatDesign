@@ -7,7 +7,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from config import A_Scale, N_Action
 from RLs.BaseAgent import BaseAgent
 from RLs.NetWork import DeterActorNet, DoubleQNet, device
-from .utils import OrnsteinUhlenbeckNoise
 
 class DDPGAgent(BaseAgent):
     def __init__(self, state_dim, action_dim, use_per: bool = False, use_trust: bool = False):
@@ -22,29 +21,29 @@ class DDPGAgent(BaseAgent):
         self.critic = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-4)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-5, weight_decay=1e-5)
         self.critic_scheduler = ReduceLROnPlateau(self.critic_optimizer, mode='min', factor=0.9, patience=20)
         
         self.action_scale = A_Scale
         self.discount = 0.99
         self.tau = 0.005
-        # Noise config
-        self.noise = OrnsteinUhlenbeckNoise(np.zeros(action_dim))
-        self.noise.sigma = 0.2 # Initial noise level
+        # explore config
+        self.epsilon = 1.0
         self.epsilon_decay = 0.995
-        self.epsilon_min = 0.05
+        self.epsilon_min = 0.15
 
 
     def select_action(self, state: np.ndarray, explore: bool=True):
-        state = torch.FloatTensor(state.reshape(1, -1) / 100.0).to(self.device)
-        k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
-        k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
-        action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
-        action *= self.action_scale
-        if explore:
-            noise = self.noise()  # Get noise from Ornstein-Uhlenbeck process
-            action += noise  # Add noise to the action
-            self.noise.sigma = max(self.epsilon_min, self.noise.sigma * self.epsilon_decay)  # Decay the noise
+        if explore and np.random.rand() < self.epsilon:
+            action = self.env.get_random_legal_action(state)
+            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        else:
+            state = state / sum(state)
+            state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
+            k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
+            k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
+            action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
+            action *= self.action_scale
         return action
 
 
@@ -59,7 +58,6 @@ class DDPGAgent(BaseAgent):
             rewards = rewards.view(-1, 1)
             dones = dones.view(-1, 1)
             target_q = rewards + (1 - dones) * self.discount * target_q
-
         current_q1, current_q2 = self.critic(states, actions)
         TD_Error_q1, TD_Error_q2 = current_q1 - target_q, current_q2 - target_q
         weighted_TD_errors_1, weighted_TD_errors_2 = weights * TD_Error_q1, weights * TD_Error_q2

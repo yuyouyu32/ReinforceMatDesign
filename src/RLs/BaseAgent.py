@@ -10,7 +10,7 @@ from exp.PERBuffer import PrioritizedReplayBuffer
 from exp.ReplayBuffer import ReplayBuffer
 from exp.TrustBuffer import TrustReplayBuffer
 from RLs.NetWork import device
-
+from RLs.utils import moving_average
 
 class BaseAgent(ABC):
     def __init__(self, use_per: bool = False, use_trust: bool = False) -> None:
@@ -59,7 +59,7 @@ class BaseAgent(ABC):
             avg_reward = np.mean(rewards)
 
             # Determine the proportion of replacements based on avg_reward
-            replacement_ratio = max(min(0.5, 1 - (avg_reward + 1 / 2)), 0)  # Adjust the scaling factor as needed
+            replacement_ratio = max(min(0.1, (self.trust_pool.ave_reward - avg_reward) / 2), 0)  # Adjust the scaling factor as needed
             num_replacements = int(batch_size * replacement_ratio)
 
             # Sample replacements from the trust pool
@@ -80,9 +80,9 @@ class BaseAgent(ABC):
                     batch_idxes = np.delete(batch_idxes, replace_indices)
 
         # Normalizing the states and actions
-        states = states / 100.0
-        next_states = next_states / 100.0
-        actions = actions / A_Scale
+        states = states / np.sum(states, axis=1, keepdims=True)
+        next_states = next_states / np.sum(next_states, axis=1, keepdims=True)
+        actions = actions / (A_Scale)
 
         states = torch.FloatTensor(states).to(self.device)
         actions = torch.FloatTensor(actions).to(self.device)
@@ -109,18 +109,25 @@ class BaseAgent(ABC):
     def evaluate_policy(self, episodes: int = 5) -> float:
         """Evaluate the current policy."""
         total_reward = 0.0
+        total_conv_reward = 0.0
         for _ in range(episodes):
-            rewards = 0.0
+            rewards = []
             state = self.env.reset()
             steps = 0
-            while steps < MaxStep:
+            done = False
+            while not done and steps < MaxStep:
                 action = self.select_action(state, explore=False)
                 next_state, reward, done = self.env.step(state, action)
-                rewards += reward
                 state = next_state
+                rewards.append(reward)
                 steps += 1
-            total_reward += (rewards / steps)
-        return total_reward / episodes
+                if done and reward in {-0.5, -1}:
+                    state = self.env.reset()
+                    done = False
+            total_reward += np.mean(rewards)
+            total_conv_reward += moving_average(rewards, min(len(rewards), 10))[-1]
+
+        return total_reward / episodes, total_conv_reward / episodes
         
 
     

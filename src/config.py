@@ -6,7 +6,7 @@ CompositionColumns = ['Ni', 'Cr', 'Nb', 'P', 'B', 'Si', 'Fe', 'C', 'Mo', 'Y', 'C
 MLResultPath = '../results/ML_All'
 
 # Seed config
-Seed = 32
+Seed = 21
 
 # ENV config
 N_State = len(CompositionColumns)

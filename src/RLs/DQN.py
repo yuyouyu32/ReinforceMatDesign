@@ -29,16 +29,18 @@ class DQNAgent(BaseAgent):
         self.epsilon_min = 0.05
 
 
+
     def select_action(self, state: np.ndarray, explore: bool=True):
-        state = torch.FloatTensor(state.reshape(1, -1) / 100.0).to(self.device)
-        k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
-        k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
-        action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
-        action *= self.action_scale
-        if explore:
-            noise = self.noise()  # Get noise from Ornstein-Uhlenbeck process
-            action += noise  # Add noise to the action
-            self.noise.sigma = max(self.epsilon_min, self.noise.sigma * self.epsilon_decay)  # Decay the noise
+        if explore and np.random.rand() < self.epsilon:
+            action = self.env.get_random_legal_action(state)
+            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        else:
+            state = state / sum(state)
+            state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
+            k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
+            k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
+            action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
+            action *= self.action_scale
         return action
 
     def train_step(self, batch_size):

@@ -277,8 +277,8 @@ class Enviroment:
             result = self.target_func(s)
         if not result_:
             result_ = self.target_func(s_)
-        result['Tg/Tl'] = result['Tg(K)'] / result['Tl(K)']
-        result_['Tg/Tl'] = result_['Tg(K)'] / result_['Tl(K)']
+        result['Tg/Tl'] = result['Tg(K)'] / max(result['Tl(K)'], 1)
+        result_['Tg/Tl'] = result_['Tg(K)'] / max(result_['Tl(K)'], 1)
         # Phase 1 (ensure legal action and state vector)
         bmg = BMGs(s, result)
         base_matrix = bmg.get_base_matrix()

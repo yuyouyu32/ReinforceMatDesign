@@ -1,12 +1,12 @@
 import os
 import random
-from collections import deque
 from typing import Optional
 
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+
 from config import ExploreBases, MaxStep, N_Action, N_State, Seed, logging
 
 # Set seed for reproducibility, should be set before importing other modules
@@ -19,6 +19,7 @@ random.seed(Seed)
 from env.enviroment import Enviroment
 from RLs.BaseAgent import BaseAgent
 from RLs.DDPG import DDPGAgent
+from RLs.utils import moving_average
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +55,17 @@ class Trainer:
             state = self.reset_state(explore_base_index)
             done = False
             episode_step = 0
-            episode_reward = 0
+            episode_rewards = []
             episode_c_loss, episode_a_loss = 0, 0
 
-            while episode_step <= MaxStep:
+            while not done and episode_step <= MaxStep:
                 action = self.agent.select_action(state)
                 next_state, reward, done = self.env.step(state, action)
                         
                 self.agent.store_experience(state, action, reward, next_state, done)
 
                 state = next_state
-                episode_reward += reward
+                episode_rewards.append(reward)
                 total_steps += 1
                 episode_step += 1
 
@@ -75,15 +76,14 @@ class Trainer:
                     train_steps = total_steps - self.start_timesteps
                     if train_steps % self.eval_steps == 0:
                         logger.info(f"Train: {train_steps} steps, start eval...")
-                        eval_reward = self.agent.evaluate_policy(episodes=5)
+                        eval_reward, eval_conv_reward = self.agent.evaluate_policy(episodes=5)
                         self.writer.add_scalar('Reward/Eval', eval_reward, train_steps)
-                        logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}")
+                        self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, train_steps)
+                        logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
                     
-                if done:
-                    if reward in {-1, -0.5}:
-                        state = self.reset_state(explore_base_index)
+                if done and reward in {-1, -0.5}:
+                    state = self.reset_state(explore_base_index)
                     done = False
-
                         
             if total_steps >= self.start_timesteps:
                 average_c_loss = episode_c_loss / episode_step
@@ -92,14 +92,16 @@ class Trainer:
                 self.writer.add_scalar('Loss/Critic', average_c_loss, episode)
                 self.writer.add_scalar('Loss/Actor', average_a_loss, episode)
                 
-            average_reward = episode_reward / episode_step
+            average_reward = np.mean(episode_rewards)
+            conv_reward = moving_average(episode_rewards, min(10, episode_step))
     
             # Add to TensorBoard
             self.writer.add_scalar('Reward/Train', average_reward, episode)
+            self.writer.add_scalar('Reward/Train_con10', conv_reward[-1], episode)
 
 
             if episode % self.log_episodes == 0:
-                logger.info(f"Train Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}")
+                logger.info(f"Train Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}, Conv Reward: {round(conv_reward[-1], 2)}")
                 if total_steps >= self.start_timesteps:
                     logger.info(f"Train Episode: {episode + 1}/{self.episodes} Critic Loss: {average_c_loss}, Actor Loss: {average_a_loss}")
 
@@ -108,10 +110,11 @@ class Trainer:
                 self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
             
         logger.info(f"Finished Train: {train_steps} steps, start final eval...")
-        eval_reward= self.agent.evaluate_policy(episodes=5)
+        eval_reward, eval_conv_reward = self.agent.evaluate_policy(episodes=5)
         self.writer.add_scalar('Reward/Eval', eval_reward, train_steps)
-        logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}")
-        
+        self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, train_steps)
+        logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
+
         self.writer.close()
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
 
