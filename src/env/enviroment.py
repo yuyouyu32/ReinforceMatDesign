@@ -328,7 +328,10 @@ class Enviroment:
                 self.new_bmgs.append(result_)
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
-                reward += Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
+                ubc_reward = Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
+                reward += ubc_reward
+                logger.info('Find existing BMGs: %s, reward: %s', bmg_.bmg_s, ubc_reward)
+                done = False
         reward = reward / 10
         return reward, done
     

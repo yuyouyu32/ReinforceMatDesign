@@ -15,7 +15,7 @@ A_Scale = 5
 Percentile = 0.8
 DoneRatio = 1.2
 MaxStep = 200
-Alpha = 0.6 # UBC 1 config
+Alpha = 1.5 # UBC 1 config
 OptionalResetElement = {'Ag', 'Ti', 'La', 'Ce', 'Gd', 'Y'}
 
 

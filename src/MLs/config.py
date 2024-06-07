@@ -6,6 +6,7 @@ from xgboost import XGBRegressor
 from .edRVFL import EnsembleDeepRVFL
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, ExpSineSquared, ConstantKernel, DotProduct, Matern
+import random
 
 param_grid = {
     'Ridge': {'alpha': [0.001, 0.01, 0.1, 1, 10, 100], 'max_iter': [1000, 10000, 50000]},
@@ -24,7 +25,7 @@ param_grid = {
     'w_random_vec_range': [[-10, 10], [-5, 5], [-1, 1], [-20, 20]],
     'b_random_vec_range': [[0, 10], [0, 5], [0, 1], [0, 0.1], [0, 20]],
     'n_layer': [2, 4, 8, 16, 32, 64, 128, 256],
-    'random_seed': list(range(1, 51)),
+    'random_seed': [random.randint(0, 1000) for _ in range(25)],
     'same_feature': [True, False],
     'activation': ['relu', 'leaky_relu']
     }

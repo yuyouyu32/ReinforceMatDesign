@@ -25,10 +25,17 @@ class ModelEvaluatorKFold:
         self.best_models = {}
         self.kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-    def evaluate_models(self, features, target):
+    def evaluate_models(self, features, target, norm_features=False, norm_target=False):
         results = {}
         features = features.to_numpy()
+        if norm_features:
+            # 横向归一化到0-1
+            row_sums = features.sum(axis=1, keepdims=True)
+            features = features / row_sums
         target = target.to_numpy()
+        if norm_target:
+            # 纵向归一化到0-1
+            target = (target - target.min()) / (target.max() - target.min())
         for model_name, model in self.models.items():
             logger.info(f"Evaluating {model_name} with K-fold cross-validation...")
             param_grid = self.params[model_name]
@@ -45,6 +52,7 @@ class ModelEvaluatorKFold:
             model.set_params(**best_params)
             r2, rmse, mape = self.eval_model(model, features, target)
             results[model_name] = {'best_params': best_params, 'rmse': rmse, 'r2': r2, 'mape': mape}
+            logger.info(f"{model_name} R2 Score: {r2}, RMSE: {rmse}, MAPE: {mape}\n")
             logger.info(f"{model_name} Best Parameters: {best_params}\n", results[model_name])
             logger.info("{:=^40}".format(f" Best {model_name} Parameters Done"))
             

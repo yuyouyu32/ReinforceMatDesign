@@ -21,12 +21,12 @@ class DDPGAgent(BaseAgent):
         self.critic = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target = DoubleQNet(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-5, weight_decay=1e-5)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3, weight_decay=1e-5)
         self.critic_scheduler = ReduceLROnPlateau(self.critic_optimizer, mode='min', factor=0.9, patience=20)
         
         self.action_scale = A_Scale
         self.discount = 0.99
-        self.tau = 0.005
+        self.tau = 0.01
         # explore config
         self.epsilon = 1.0
         self.epsilon_decay = 0.995
@@ -42,13 +42,16 @@ class DDPGAgent(BaseAgent):
             state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
             k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor
             k_tensor = torch.tensor([k], dtype=torch.int).to(self.device)  # Convert k to a tensor and move to device
-            action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
+            with torch.no_grad():
+                self.actor.eval()
+                action = self.actor(state, k_tensor).cpu().data.numpy().flatten()
             action *= self.action_scale
         return action
 
 
     def train_step(self, batch_size):
         states, actions, rewards, next_states, dones, weights, batch_idxes, replace_indices = self.sample(batch_size)
+
         # Training logic
         with torch.no_grad():
             k = torch.count_nonzero(next_states, dim=1)  # Count non-zero elements in the state tensor
@@ -58,6 +61,8 @@ class DDPGAgent(BaseAgent):
             rewards = rewards.view(-1, 1)
             dones = dones.view(-1, 1)
             target_q = rewards + (1 - dones) * self.discount * target_q
+        self.actor.train()
+        self.critic.train()
         current_q1, current_q2 = self.critic(states, actions)
         TD_Error_q1, TD_Error_q2 = current_q1 - target_q, current_q2 - target_q
         weighted_TD_errors_1, weighted_TD_errors_2 = weights * TD_Error_q1, weights * TD_Error_q2

@@ -11,16 +11,17 @@ class DeterActorNet(nn.Module):
         super(DeterActorNet, self).__init__()
         self.fc = nn.Sequential(
             nn.Linear(s_shape, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
-            nn.Linear(256, 512),
-            nn.LeakyReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(256, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  
             nn.LeakyReLU(),
             nn.Linear(128, a_shape),
             nn.Tanh()
-        ) 
+        )
         self._initialize_weights()
 
     def _initialize_weights(self):
@@ -35,40 +36,53 @@ class DeterActorNet(nn.Module):
         a = activate_A_func(x, k)
         return a
 
+
 class DoubleQNet(nn.Module):
     def __init__(self, s_shape, a_shape):
         super(DoubleQNet, self).__init__()
         self.fc_s = nn.Sequential(
             nn.Linear(s_shape, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 512),
+            nn.BatchNorm1d(512),  
             nn.LeakyReLU(),
             nn.Linear(512, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  
             nn.LeakyReLU()
         )
         self.fc_a = nn.Sequential(
             nn.Linear(a_shape, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 512),
+            nn.BatchNorm1d(512),  
             nn.LeakyReLU(),
             nn.Linear(512, 256),
+            nn.BatchNorm1d(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  
             nn.LeakyReLU()
         )
         self.output1 = nn.Sequential(
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  
             nn.LeakyReLU(),
             nn.Linear(128, 32),
+            nn.BatchNorm1d(32),  
             nn.LeakyReLU(),
             nn.Linear(32, 1)
         )
         self.output2 = nn.Sequential(
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  
             nn.LeakyReLU(),
             nn.Linear(128, 32),
+            nn.BatchNorm1d(32),  
             nn.LeakyReLU(),
             nn.Linear(32, 1)
         )
@@ -88,7 +102,6 @@ class DoubleQNet(nn.Module):
         q1 = self.output1(cat)
         q2 = self.output2(cat)
         return q1, q2
-
     
 class QNetwork(nn.Module):
     def __init__(self, state_dim, action_dim):
