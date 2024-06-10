@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV, KFold
 
-from .config import *
+from .reg_config import *
 from config import logging
 
 logger = logging.getLogger(__name__)

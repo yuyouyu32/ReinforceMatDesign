@@ -25,7 +25,7 @@ param_grid = {
     'w_random_vec_range': [[-10, 10], [-5, 5], [-1, 1], [-20, 20]],
     'b_random_vec_range': [[0, 10], [0, 5], [0, 1], [0, 0.1], [0, 20]],
     'n_layer': [2, 4, 8, 16, 32, 64, 128, 256],
-    'random_seed': [random.randint(0, 1000) for _ in range(25)],
+    'random_seed': [random.randint(0, 1000) for _ in range(8)],
     'same_feature': [True, False],
     'activation': ['relu', 'leaky_relu']
     }

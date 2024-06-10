@@ -1,6 +1,6 @@
 import pandas as pd
 from dataloader.my_dataloader import CustomDataLoader
-from .ML_worker import ModelEvaluatorKFold
+from .reg_worker import ModelEvaluatorKFold
 import multiprocessing
 import os
 from config import logging
@@ -50,4 +50,5 @@ if __name__ == "__main__":
     else:
         # Single process
         for target_name in target_columns:
+            if target_name in {'Tg(K)', 'Tx(K)'}: continue
             process_target(target_name, file_path, drop_columns, Save_path, target_columns)
