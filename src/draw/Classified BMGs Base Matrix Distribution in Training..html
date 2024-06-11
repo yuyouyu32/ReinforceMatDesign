@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+                <script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>
+            <script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/themes/macarons.js"></script>
+
+</head>
+<body >
+    <div id="40527b53a853410ebe7642aeacfe5b32" class="chart-container" style="width:900px; height:500px; "></div>
+    <script>
+        var chart_40527b53a853410ebe7642aeacfe5b32 = echarts.init(
+            document.getElementById('40527b53a853410ebe7642aeacfe5b32'), 'macarons', {renderer: 'canvas'});
+        var option_40527b53a853410ebe7642aeacfe5b32 = {
+    "animation": true,
+    "animationThreshold": 2000,
+    "animationDuration": 1000,
+    "animationEasing": "cubicOut",
+    "animationDelay": 0,
+    "animationDurationUpdate": 300,
+    "animationEasingUpdate": "cubicOut",
+    "animationDelayUpdate": 0,
+    "aria": {
+        "enabled": false
+    },
+    "series": [
+        {
+            "type": "pie",
+            "colorBy": "data",
+            "legendHoverLink": true,
+            "selectedMode": false,
+            "selectedOffset": 10,
+            "clockwise": true,
+            "startAngle": 90,
+            "minAngle": 0,
+            "minShowLabelAngle": 0,
+            "avoidLabelOverlap": true,
+            "stillShowZeroSum": true,
+            "percentPrecision": 2,
+            "showEmptyCircle": true,
+            "emptyCircleStyle": {
+                "color": "lightgray",
+                "borderColor": "#000",
+                "borderWidth": 0,
+                "borderType": "solid",
+                "borderDashOffset": 0,
+                "borderCap": "butt",
+                "borderJoin": "bevel",
+                "borderMiterLimit": 10,
+                "opacity": 1
+            },
+            "data": [
+                {
+                    "name": "Fe",
+                    "value": 1333
+                },
+                {
+                    "name": "Al",
+                    "value": 919
+                },
+                {
+                    "name": "Ni",
+                    "value": 862
+                },
+                {
+                    "name": "Zr",
+                    "value": 706
+                },
+                {
+                    "name": "Co",
+                    "value": 570
+                },
+                {
+                    "name": "Mg",
+                    "value": 501
+                },
+                {
+                    "name": "Cu",
+                    "value": 485
+                },
+                {
+                    "name": "Ti",
+                    "value": 249
+                },
+                {
+                    "name": "La",
+                    "value": 227
+                },
+                {
+                    "name": "Pd",
+                    "value": 200
+                },
+                {
+                    "name": "Nb",
+                    "value": 149
+                },
+                {
+                    "name": "Hf",
+                    "value": 120
+                },
+                {
+                    "name": "Ca",
+                    "value": 77
+                },
+                {
+                    "name": "Mo",
+                    "value": 57
+                },
+                {
+                    "name": "Ag",
+                    "value": 52
+                },
+                {
+                    "name": "Cr",
+                    "value": 42
+                },
+                {
+                    "name": "Ce",
+                    "value": 41
+                },
+                {
+                    "name": "Si",
+                    "value": 40
+                },
+                {
+                    "name": "Mn",
+                    "value": 37
+                },
+                {
+                    "name": "Nd",
+                    "value": 24
+                },
+                {
+                    "name": "Pr",
+                    "value": 22
+                },
+                {
+                    "name": "Y",
+                    "value": 22
+                },
+                {
+                    "name": "Gd",
+                    "value": 18
+                },
+                {
+                    "name": "Au",
+                    "value": 15
+                },
+                {
+                    "name": "B",
+                    "value": 15
+                },
+                {
+                    "name": "Pt",
+                    "value": 11
+                },
+                {
+                    "name": "Dy",
+                    "value": 6
+                },
+                {
+                    "name": "Sm",
+                    "value": 6
+                },
+                {
+                    "name": "W",
+                    "value": 6
+                },
+                {
+                    "name": "Ho",
+                    "value": 5
+                },
+                {
+                    "name": "Sr",
+                    "value": 5
+                },
+                {
+                    "name": "Tm",
+                    "value": 5
+                },
+                {
+                    "name": "Er",
+                    "value": 4
+                },
+                {
+                    "name": "Sc",
+                    "value": 4
+                },
+                {
+                    "name": "Tb",
+                    "value": 4
+                },
+                {
+                    "name": "Ge",
+                    "value": 4
+                },
+                {
+                    "name": "Lu",
+                    "value": 3
+                },
+                {
+                    "name": "V",
+                    "value": 3
+                },
+                {
+                    "name": "Ta",
+                    "value": 2
+                },
+                {
+                    "name": "Zn",
+                    "value": 2
+                },
+                {
+                    "name": "Ru",
+                    "value": 2
+                },
+                {
+                    "name": "C",
+                    "value": 1
+                },
+                {
+                    "name": "Yb",
+                    "value": 1
+                }
+            ],
+            "radius": [
+                "30%",
+                "70%"
+            ],
+            "center": [
+                "60%",
+                "50%"
+            ],
+            "roseType": "radius",
+            "label": {
+                "show": true,
+                "position": "outside",
+                "color": "#000",
+                "distance": 20,
+                "margin": 8,
+                "fontSize": 10,
+                "fontWeight": "bold",
+                "formatter": "{b}: {d}%"
+            },
+            "labelLine": {
+                "show": true,
+                "showAbove": false,
+                "length": 15,
+                "length2": 15,
+                "smooth": false,
+                "minTurnAngle": 90,
+                "maxSurfaceAngle": 90
+            },
+            "rippleEffect": {
+                "show": true,
+                "brushType": "stroke",
+                "scale": 2.5,
+                "period": 4
+            }
+        }
+    ],
+    "legend": [
+        {
+            "data": [
+                "Fe",
+                "Al",
+                "Ni",
+                "Zr",
+                "Co",
+                "Mg",
+                "Cu",
+                "Ti",
+                "La",
+                "Pd",
+                "Nb",
+                "Hf",
+                "Ca",
+                "Mo",
+                "Ag",
+                "Cr",
+                "Ce",
+                "Si",
+                "Mn",
+                "Nd",
+                "Pr",
+                "Y",
+                "Gd",
+                "Au",
+                "B",
+                "Pt",
+                "Dy",
+                "Sm",
+                "W",
+                "Ho",
+                "Sr",
+                "Tm",
+                "Er",
+                "Sc",
+                "Tb",
+                "Ge",
+                "Lu",
+                "V",
+                "Ta",
+                "Zn",
+                "Ru",
+                "C",
+                "Yb"
+            ],
+            "selected": {},
+            "show": true,
+            "left": "2%",
+            "top": "15%",
+            "orient": "vertical",
+            "padding": 5,
+            "itemGap": 10,
+            "itemWidth": 25,
+            "itemHeight": 14,
+            "textStyle": {
+                "fontWeight": "bold"
+            },
+            "backgroundColor": "transparent",
+            "borderColor": "#ccc",
+            "borderRadius": 0,
+            "pageButtonItemGap": 5,
+            "pageButtonPosition": "end",
+            "pageFormatter": "{current}/{total}",
+            "pageIconColor": "#2f4554",
+            "pageIconInactiveColor": "#aaa",
+            "pageIconSize": 15,
+            "animationDurationUpdate": 800,
+            "selector": false,
+            "selectorPosition": "auto",
+            "selectorItemGap": 7,
+            "selectorButtonGap": 10
+        }
+    ],
+    "tooltip": {
+        "show": true,
+        "trigger": "item",
+        "triggerOn": "mousemove|click",
+        "axisPointer": {
+            "type": "line"
+        },
+        "showContent": true,
+        "alwaysShowContent": false,
+        "showDelay": 0,
+        "hideDelay": 100,
+        "enterable": false,
+        "confine": false,
+        "appendToBody": false,
+        "transitionDuration": 0.4,
+        "textStyle": {
+            "fontSize": 14
+        },
+        "borderWidth": 0,
+        "padding": 5,
+        "order": "seriesAsc"
+    },
+    "title": [
+        {
+            "show": true,
+            "target": "blank",
+            "subtarget": "blank",
+            "padding": 5,
+            "itemGap": 10,
+            "textAlign": "auto",
+            "textVerticalAlign": "auto",
+            "triggerEvent": false
+        }
+    ]
+};
+        chart_40527b53a853410ebe7642aeacfe5b32.setOption(option_40527b53a853410ebe7642aeacfe5b32);
+    </script>
+</body>
+</html>

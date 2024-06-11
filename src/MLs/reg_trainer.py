@@ -7,7 +7,7 @@ from config import logging
 logger = logging.getLogger(__name__)
 
 
-output_path = './Output/'  # Replace with your output path
+output_path = '../results/'  # Replace with your output path
 process_method = 'Single'  # 'Single' or 'Multi'
 file_path = '/data/home/yeyongyu/SHU/ReinforceMatDesign/data/ALL_data_grouped_processed.xlsx'  # Replace with your file path
 drop_columns = ['BMGs', "Chemical composition"]
@@ -32,7 +32,7 @@ def process_target(target_name, file_path, drop_columns, Save_path, target_colum
         results.to_excel(Save_path + f"{target_name}_ml.xlsx")
     logger.info("{:=^80}".format(f" {target_name} Done"))
 
-# nohup python -u -m MLs.trainer > ../logs/MLs.trainer.log 2>&1 & 
+# nohup python -u -m MLs.reg_trainer > ../logs/MLs.reg_trainer.log 2>&1 & 
 if __name__ == "__main__":
     if not os.path.exists(Save_path):
         os.makedirs(Save_path)

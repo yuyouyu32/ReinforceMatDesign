@@ -324,7 +324,7 @@ class Enviroment:
             if self.exist_bmgs.get(bmg_.bmg_s, 0) == 0:
                 self.exist_bmgs[bmg_.bmg_s] = 1
                 reward += 5
-                result_['BMGs'] = bmg_.bmg_s
+                result_['Chemical composition'] = bmg_.bmg_s
                 self.new_bmgs.append(result_)
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
