@@ -20,14 +20,14 @@ param_grid = {
     'XGBRegressor': {'n_estimators': [10, 50, 100, 200, 500], 'learning_rate': [0.001, 0.01, 0.1, 1], 'max_depth': [3, 5, 10, 20, 50]},
     # 'GaussianProcessRegressor': {'kernel': [1.0 * RBF(1.0), 1.0 * RationalQuadratic(), 1.0 * ExpSineSquared(1.0, 5.0, periodicity_bounds=(1e-2, 1e1)), ConstantKernel(0.1, (0.01, 10.0)) * (DotProduct(sigma_0=1.0, sigma_0_bounds=(0.1, 10.0)) ** 2), 1.0 * Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e3), nu=1.5)]},
     'edRVFL': {
-    'n_nodes': [2, 4, 8, 16, 32, 64, 128, 256], 
-    'lam': [0.01, 0.1, 1],
-    'w_random_vec_range': [[-10, 10], [-5, 5], [-1, 1], [-20, 20]],
-    'b_random_vec_range': [[0, 10], [0, 5], [0, 1], [0, 0.1], [0, 20]],
-    'n_layer': [2, 4, 8, 16, 32, 64, 128, 256],
-    'random_seed': [random.randint(0, 1000) for _ in range(8)],
-    'same_feature': [True, False],
-    'activation': ['relu', 'leaky_relu']
+    'n_nodes': [16, 64, 128, 256, 512], 
+    'lam': [0.1, 1, 2],
+    'w_random_vec_range': [[-10, 10], [-1, 1]],
+    'b_random_vec_range': [[0, 10], [0, 1]],
+    'n_layer': [16, 32, 64, 128, 256],
+    'random_seed': [random.randint(0, 1000) for _ in range(16)],
+    'same_feature': [True],
+    'activation': ['leaky_relu']
     }
 }
 
