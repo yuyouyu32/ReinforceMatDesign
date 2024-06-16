@@ -1,6 +1,6 @@
 import os
 import random
-from typing import Optional
+from typing import Union
 
 import numpy as np
 import torch
@@ -18,13 +18,15 @@ random.seed(Seed)
 
 from env.enviroment import Enviroment
 from RLs.BaseAgent import BaseAgent
+from RLs.PPO import PPOAgent
 from RLs.TD3 import TD3Agent
 from RLs.utils import moving_average
 
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self, agent: BaseAgent, batch_size: int, episodes: int, save_path: str, start_timesteps: int = 500, log_episodes: int = 10, eval_steps: int = 1000):
+    def __init__(self, agent: Union[BaseAgent, PPOAgent, TD3Agent],
+        batch_size: int, episodes: int, save_path: str, start_timesteps: int = 500, log_episodes: int = 10, eval_steps: int = 1000):
         self.agent = agent
         self.env: Enviroment = self.agent.env
         self.batch_size = batch_size
@@ -41,7 +43,7 @@ class Trainer:
             os.makedirs(self.log_dir)
         self.writer = SummaryWriter(log_dir=self.log_dir)
         
-
+    
     def train(self):
         total_steps = 0
 

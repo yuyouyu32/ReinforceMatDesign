@@ -36,7 +36,6 @@ class DeterActorNet(nn.Module):
         a = activate_A_func(x, k)
         return a
 
-
 class DoubleQNet(nn.Module):
     def __init__(self, s_shape, a_shape):
         super(DoubleQNet, self).__init__()
@@ -174,3 +173,58 @@ class PPOPolicyNetwork(nn.Module):
         action_std = torch.exp(action_log_std)
         state_value = self.value_head(x)
         return action_mean, action_std, state_value
+    
+class PPOActorNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(PPOActorNetwork, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 512),
+            nn.LayerNorm(512),  
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),  
+            nn.LeakyReLU(),
+        )
+        self.mean_head = nn.Sequential(
+            nn.Linear(128, action_dim),
+            nn.Tanh()
+        )
+        self.std_head = nn.Sequential(
+            nn.Linear(128, action_dim),
+            nn.Tanh()
+        )
+
+    def forward(self, state):
+        x = self.fc(state)
+        action_mean = self.mean_head(x)
+        action_std = torch.exp(self.std_head(x))
+        return action_mean, action_std
+
+class PPOCriticNetwork(nn.Module):
+    def __init__(self, state_dim):
+        super(PPOCriticNetwork, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 512),
+            nn.LayerNorm(512),  
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),  
+            nn.LeakyReLU(),
+            nn.Linear(128, 1)
+        )
+
+    def forward(self, state):
+        state_value = self.fc(state)
+        return state_value
