@@ -54,8 +54,8 @@ class Trainer:
         action, action_log_prob = self.agent.select_action(state)
         next_state, reward, done = self.env.step(state, action)
 
-        state_tensor = torch.tensor(state, dtype=torch.float32)
-        next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
+        state_tensor = torch.tensor(state, dtype=torch.float32).to(self.agent.device)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).to(self.agent.device)
 
         state_value = self.agent.critic(state_tensor).item()
         next_state_value = self.agent.critic(next_state_tensor).item()
