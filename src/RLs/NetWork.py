@@ -11,13 +11,13 @@ class DeterActorNet(nn.Module):
         super(DeterActorNet, self).__init__()
         self.fc = nn.Sequential(
             nn.Linear(s_shape, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.BatchNorm1d(128),  
+            nn.LayerNorm(128),  
             nn.LeakyReLU(),
             nn.Linear(128, a_shape),
             nn.Tanh()
@@ -42,47 +42,47 @@ class DoubleQNet(nn.Module):
         super(DoubleQNet, self).__init__()
         self.fc_s = nn.Sequential(
             nn.Linear(s_shape, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 512),
-            nn.BatchNorm1d(512),  
+            nn.LayerNorm(512),  
             nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.BatchNorm1d(128),  
+            nn.LayerNorm(128),  
             nn.LeakyReLU()
         )
         self.fc_a = nn.Sequential(
             nn.Linear(a_shape, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 512),
-            nn.BatchNorm1d(512),  
+            nn.LayerNorm(512),  
             nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.BatchNorm1d(256),  
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.BatchNorm1d(128),  
+            nn.LayerNorm(128),  
             nn.LeakyReLU()
         )
         self.output1 = nn.Sequential(
             nn.Linear(256, 128),
-            nn.BatchNorm1d(128),  
+            nn.LayerNorm(128),  
             nn.LeakyReLU(),
             nn.Linear(128, 32),
-            nn.BatchNorm1d(32),  
+            nn.LayerNorm(32),  
             nn.LeakyReLU(),
             nn.Linear(32, 1)
         )
         self.output2 = nn.Sequential(
             nn.Linear(256, 128),
-            nn.BatchNorm1d(128),  
+            nn.LayerNorm(128),  
             nn.LeakyReLU(),
             nn.Linear(128, 32),
-            nn.BatchNorm1d(32),  
+            nn.LayerNorm(32),  
             nn.LeakyReLU(),
             nn.Linear(32, 1)
         )
@@ -143,29 +143,34 @@ class QNetwork(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
     
-class PolicyActorNet(nn.Module):
-    def __init__(self, s_shape, a_shape, action_scale):
-        super(PolicyActorNet, self).__init__()
-        self.shared = nn.Sequential(
-            nn.Linear(s_shape, 128),
+class PPOPolicyNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(PPOPolicyNetwork, self).__init__()
+        self.fc_s = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
-            nn.Linear(128, 256),
+            nn.Linear(256, 512),
+            nn.LayerNorm(512),  
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),  
             nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
+            nn.LayerNorm(128),  
             nn.LeakyReLU()
         )
-        self.fc_mean = nn.Linear(64, a_shape)
-        self.fc_std = nn.Linear(64, a_shape)
-        self.action_scale = action_scale
-
-    def forward(self, x, k):
-        shared = self.shared(x)
-        mean = self.fc_mean(shared)
-        std = torch.exp(self.fc_std(shared))
-        normal_dist = Normal(mean, std)
-        action = normal_dist.sample()
-        activated_action = activate_A_func(action, k)
-        log_prob = normal_dist.log_prob(action).sum(-1)  # Adjust if necessary based on activation
-        return activated_action, log_prob
+        self.mean_head = nn.Sequential(
+            nn.Linear(128, action_dim),
+            nn.Tanh()
+        )
+        self.log_std_head = nn.Linear(128, action_dim)
+        self.value_head = nn.Linear(128, 1)
+        
+    def forward(self, state):
+        x = self.fc_s(state)
+        action_mean = self.mean_head(x)
+        action_log_std = self.log_std_head(x)
+        action_std = torch.exp(action_log_std)
+        state_value = self.value_head(x)
+        return action_mean, action_std, state_value

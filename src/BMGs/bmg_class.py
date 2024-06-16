@@ -17,6 +17,7 @@ class BMGs():
         """
         self.properties = properties
         if s is not None:
+            if sum(s) < 1.1: s = np.array(s) * 100
             self.s = s
             self.bmg_s = self._generate_BMGs_string()
         elif bmg_s is not None:
@@ -58,12 +59,11 @@ class BMGs():
         Returns:
             str: BMGs string
         """
-        
-        columns = CompositionColumns
-        assert len(self.s) == len(columns), "The length of the vector 's' must match the number of columns in the Excel file."
+        assert len(self.s) == len(CompositionColumns), "The length of the vector 's' must match the number of columns in the Excel file."
 
         # Create a dictionary from relevant columns and vector 's'
-        col_s_dict = {col: self.s[i] for i, col in enumerate(columns)}
+
+        col_s_dict = {col: self.s[i] for i, col in enumerate(CompositionColumns)}
         
         # Sort columns by the value in 's' and create the BMGs string
         sorted_cols = sorted(col_s_dict, key=lambda c: col_s_dict[c], reverse=True)

@@ -1,14 +1,16 @@
-import pandas as pd
 import glob
-from sklearn.linear_model import Ridge, Lasso, ElasticNet
-from sklearn.svm import SVR
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
+
+import pandas as pd
+from sklearn.ensemble import (AdaBoostRegressor, GradientBoostingRegressor,
+                              RandomForestRegressor)
+from sklearn.linear_model import ElasticNet, Lasso, Ridge
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
 from xgboost import XGBRegressor
 
-from MLs.edRVFL import EnsembleDeepRVFL
-from dataloader.my_dataloader import CustomDataLoader
 from config import logging
+from dataloader.my_dataloader import CustomDataLoader
+from MLs.edRVFL import EnsembleDeepRVFL
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +19,8 @@ class ML_Model:
         self.data = CustomDataLoader(data_path, drop_columns, target_columns)
         self.target_columns = target_columns
         self.results_path = results_path
-
-    def get_best_models(self):
+    
+    def get_best_models(self, norm_features=True, norm_target=True):
         xlsx_paths = glob.glob(self.results_path + '/*.xlsx')
         best_models = {}
         for target_column in self.target_columns:
@@ -27,7 +29,14 @@ class ML_Model:
                 if target_column in xlsx_path:
                     best_models[target_column] = self._get_best_model(xlsx_path)
                     x, y = self.data.get_features_for_target(target_column)
-                    best_models[target_column].fit(x.to_numpy(), y.to_numpy())
+                    x = x.to_numpy()
+                    if norm_features:
+                        x_sums = x.sum(axis=1, keepdims=True)
+                        x = x / x_sums
+                    y = y.to_numpy()
+                    if norm_target:
+                        y = (y - y.min()) / (y.max() - y.min())
+                    best_models[target_column].fit(x, y)
                     logger.info(f"Best model for {target_column} is {best_models[target_column].__class__.__name__}")
         return best_models
 

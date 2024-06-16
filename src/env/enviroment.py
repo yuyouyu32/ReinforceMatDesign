@@ -8,7 +8,10 @@ import pandas as pd
 from BMGs import BMGs
 from config import *
 from env.ML_model import ML_Model
-from config import logging
+from env.Cls_model import Cls_Model
+from config import logging, MaxStep
+import json
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +22,39 @@ class Enviroment:
         self.n_states = N_State
         # Models
         self.models = ML_Model(DataPath, DropColumns, TargetColumns, MLResultPath)
-        self.best_models = self.models.get_best_models()
+        self.best_models = self.models.get_best_models(norm_features=True, norm_target=True)
+        self.cls_model = Cls_Model(ClsPath, ClsDropColumns, ClsTargetColumns, ClsResultpath).get_best_models(norm_features=True)
         # Thresholds
         self.matrix_thresholds, self.exist_bmgs = self.define_matrix_thresholds(DataPath, Percentile)
         # Record new BMGs
         self.new_bmgs = []
         # Initial Pool and constraints
-        self.init_data = pd.read_excel(DataPath).drop(columns=DropColumns).drop(columns=TargetColumns)  
-        self.init_pool = self.init_data.values
-        self.max_com_num = min(self.init_data.astype(bool).sum(axis=1).max(), N_Action)
-        self.min_com_num = max(self.init_data.astype(bool).sum(axis=1).min(), 3)
+        self.original_data = pd.read_excel(DataPath)
+        bmgs_index = self.original_data[self.original_data['cls_label'] == 1].index 
+        
+        self.features = self.original_data.drop(columns=DropColumns).drop(columns=TargetColumns)
+        # Normalize the init_data row-wise
+        self.features = self.features.apply(lambda x: x / x.sum(), axis=1)
+        self.init_pool = self.features.values[bmgs_index]
+        
+        # Init Base Matrix config
+        self.init_base_matrix = self.get_base_matrix_bases(BaseMatrixPath)
+        
+        self.max_com_num = min(self.features.astype(bool).sum(axis=1).max(), N_Action)
+        self.min_com_num = max(self.features.astype(bool).sum(axis=1).min(), 3)
+        
+        self.env_step = 0
+        # Record the min and max values of the target columns
+        self.minmax_record = {}
+        for target_clomuns in TargetColumns:
+            self.minmax_record[target_clomuns] = self.original_data[target_clomuns].min(), self.original_data[target_clomuns].max()
+        del self.original_data
+        del self.features
+        del bmgs_index
+        
     
     @staticmethod
-    def define_matrix_thresholds(excel_file: str, percentile: float = 0.8) -> Tuple[Dict, Dict]:
+    def define_matrix_thresholds(excel_file: str, percentile: float = 0.8, norm_target: bool = True) -> Tuple[Dict, Dict]:
         """
         Define the matrix thresholds for each target property.
         
@@ -49,6 +72,10 @@ class Enviroment:
         # Identify the base matrix for each row
         df = df.drop(columns=DropColumns)
         df['Tg/Tl'] = df['Tg(K)'] / df['Tl(K)']
+        # normalize the target_columns
+        if norm_target:
+            df[TargetColumns] = df[TargetColumns].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
+            
         target_columns = TargetColumns + ['Tg/Tl']
         df['Base_Matrix'] = df.drop(columns=target_columns).iloc[:, 1:].idxmax(axis=1)
         # Use the Base_Matrix values to groupby, then use the percentile to find the percentile of each group, only for TargetColumns, to get a thresholds dict
@@ -58,11 +85,28 @@ class Enviroment:
         matrix_thresholds.loc['New'] = pd.Series(dtype=float)
         # Fill the NaN values with the median of the column
         matrix_thresholds_filled = matrix_thresholds.apply(lambda x: x.fillna(x.median()), axis=0)
-        
-
         matrix_thresholds_filled = matrix_thresholds_filled.to_dict(orient='index')
 
         return matrix_thresholds_filled, exist_bmgs
+
+    @staticmethod
+    def get_base_matrix_bases(json_path) -> Dict[str, Tuple]:
+        with open(json_path, 'r') as f:
+            base_matrix_bases = json.load(f)
+        return base_matrix_bases
+    
+    def cls_func(self, s: np.ndarray) -> int:
+        """
+        Get the classification label of a BMGs.
+        
+        Parameters:
+            s (np.ndarray): state vector
+        
+        Returns:
+            int: classification label
+        """
+        X = s.reshape(1, -1)
+        return self.cls_model.predict_proba(X)[0][1]
     
     def target_func(self, s: np.ndarray) -> Dict:
         """
@@ -78,6 +122,7 @@ class Enviroment:
         results = {}
         for target, model in self.best_models.items():
             results[target] = max(model.predict(X)[0], 0)
+            
         return results
     
     def step(self, s: np.ndarray, a: np.ndarray) -> Tuple[np.ndarray, float, bool]:
@@ -96,9 +141,28 @@ class Enviroment:
         indexs = np.where(s != 0)[0]
         assert len(a) >= len(indexs)
         s_[indexs] = s_[indexs] + a[:len(indexs)]
+        self.env_step += 1
         reward, done = self.reward(s, a, s_)
         return s_, reward, done
     
+    def get_random_action(self, s: np.ndarray) -> np.ndarray:
+        """
+        Get a random action vector.
+        
+        Parameters:
+            s (np.ndarray): state vector
+        
+        Returns:
+            np.ndarray: action vector
+        """
+        if not self.judge_s(s):
+            raise ValueError("Invalid state vector {s}, Please check the state vector.")
+        k = np.count_nonzero(s)
+        a = np.zeros(N_Action)
+        action = np.random.rand(k)
+        action = (action - action.mean()) * (A_Scale)
+        a[:k] = action
+        return a
     
     def get_random_legal_action(self, s: np.ndarray) -> np.ndarray:
         """
@@ -119,7 +183,7 @@ class Enviroment:
             action = np.random.rand(k)
             action = (action - action.mean()) * (A_Scale /iter)
             a[:k] = action
-            s_ = self.step(s, a)[0]
+            s_ = self.step(s, a, 0)[0]
             if self.judge_a(a) and self.judge_s(s_):
                 break
             iter += 1
@@ -139,6 +203,8 @@ class Enviroment:
         # 50% chance to replace the element with the smallest value
         if np.random.rand() > 0.5:
             s = self.replace_element(s)
+            
+        self.env_step = 0
         return s
     
     def reset_by_random_state(self, random_state: np.random.RandomState) -> np.ndarray:
@@ -155,6 +221,8 @@ class Enviroment:
         # 50% chance to replace the element with the smallest value
         if random_state.rand() > 0.5:
             s = self.replace_element(s)
+            
+        self.env_step = 0
         return s
     
     def replace_element(self, s: np.ndarray) -> np.ndarray:
@@ -203,7 +271,9 @@ class Enviroment:
         Returns:
             np.ndarray: state vector
         """
-        optional_len = k - len(mandatory_elements)
+        k = min(k, self.max_com_num)
+        # Step 0: Randomly select optional elements
+        optional_len = np.random.randint(k - len(mandatory_elements) + 1)
         
         # Step 1: Randomly select optional elements
         selected_optional_elements = random.sample(list(optional_elements.keys()), optional_len)
@@ -212,23 +282,25 @@ class Enviroment:
         state = {}
         
         for element, (low, high) in mandatory_elements.items():
-            state[element] = np.round(np.random.uniform(low, high), 2)
+            state[element] = np.round(np.random.uniform(low, high), 4)
         
         for element in selected_optional_elements:
             low, high = optional_elements[element]
-            state[element] = np.round(np.random.uniform(low, high), 2)
+            state[element] = np.round(np.random.uniform(low, high), 4)
         
-        # Step 3: Normalize the values to sum to 100
+        # Step 3: Normalize the values to sum to 1
         total = sum(state.values())
         for element in state:
-            state[element] = np.round((state[element] / total) * 100, 2)
+            state[element] = np.round((state[element] / total), 4)
         
         # Step 4: Create the final state vector
         state_vector = np.zeros(len(CompositionColumns))
-        for i, element in enumerate(CompositionColumns):
-            if element in state:
-                state_vector[i] = state[element]
-        
+        for element, value in state.items():
+            index = CompositionColumns.index(element)
+            state_vector[index] = value
+        if np.random.rand() > 0.8:
+            state_vector = self.replace_element(state_vector)
+        self.env_step = 0
         return state_vector
         
     def judge_s(self, s: np.ndarray) -> bool:
@@ -241,7 +313,7 @@ class Enviroment:
         Returns:
             bool: True if the state vector is valid, False otherwise
         """
-        if abs(sum(s) - 100.0) > 0.25 or s.min() < 0 or s.max() > 100:
+        if abs(sum(s) - 1) > 0.025 or s.min() < 0 or s.max() > 1:
             return False
         return True
     
@@ -260,6 +332,21 @@ class Enviroment:
             return False
         return True
 
+    def inverse_normal_targets(self, target_name, target_value):
+        """
+        Inverse the normalization of the target value.
+        
+        Parameters:
+            target_name (str): target name
+            target_value (float): target value
+        
+        Returns:
+            float: inverse normalized target value
+        """
+        # df[target_columns] = df[target_columns].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
+        min_value, max_value = self.minmax_record[target_name]
+        return target_value * (max_value - min_value) + min_value
+    
     def reward(self, s: np.ndarray, a: np.ndarray, s_: np.ndarray, result: Optional[Dict[str, float]]= None, result_: Optional[Dict[str, float]]= None) -> Tuple[float, bool]:
         """
         Calculate the reward based on the performance improvement and threshold achievement.
@@ -273,27 +360,27 @@ class Enviroment:
             float: reward
             bool: done
         """
-        if not result:
-            result = self.target_func(s)
-        if not result_:
-            result_ = self.target_func(s_)
-        result['Tg/Tl'] = result['Tg(K)'] / max(result['Tl(K)'], 1)
-        result_['Tg/Tl'] = result_['Tg(K)'] / max(result_['Tl(K)'], 1)
+        ################## Illegal action or state vector ##################
+        if not self.judge_s(s_):  # Illegal action or state vector
+            return -1 + math.log(self.env_step + 1) / (2 * math.log(MaxStep)), True
+        
+        ################## BMG classification ##################
+        bmg_prob = self.cls_func(s_)
+        if bmg_prob < 0.5:
+            return bmg_prob - 0.5, True
+        
+        ################## BMG target properties ##################
+        reward = bmg_prob - 0.5
+        if not result: result = self.target_func(s)
+        if not result_: result_ = self.target_func(s_)
+        result['Tg/Tl'] = self.inverse_normal_targets('Tg(K)', result['Tg(K)']) / self.inverse_normal_targets('Tl(K)', result['Tl(K)'])
+        result_['Tg/Tl'] = self.inverse_normal_targets('Tg(K)', result_['Tg(K)']) / self.inverse_normal_targets('Tl(K)', result_['Tl(K)'])
         # Phase 1 (ensure legal action and state vector)
-        bmg = BMGs(s, result)
-        base_matrix = bmg.get_base_matrix()
         bmg_ = BMGs(s_, result_)
         base_matrix_ = bmg_.get_base_matrix()
-
-        if not self.judge_s(s_) or not self.judge_a(a):  # Illegal action or state vector
-            return -1, True
-        if base_matrix != base_matrix_:
-            return -0.5, True
         
         # Calculate the reward based on performance improvement and threshold achievement
-        reward = 0
         thresholds = self.matrix_thresholds.get(base_matrix_, self.matrix_thresholds['New'])
-        thresholds['Dmax(mm)'] = min(5, thresholds['Dmax(mm)']) # Limit the maximum value of Dmax(mm) to 5
         thresholds['Tg/Tl'] = min(0.6, thresholds['Tg/Tl'])
         done_count = 0
         for target, weight in RewardWeight.items():
@@ -312,10 +399,9 @@ class Enviroment:
                     done_count += 1
                 # Compute component of reward
                 if meets_threshold:
-                    reward = reward + 5 * weight # Reward for meeting the threshold
+                    reward = reward + 0.2 * weight # Reward for meeting the threshold
 
-                reward += (weight * smooth_improvement_ratio)
-                
+                reward += (weight * smooth_improvement_ratio * 0.1)
         if done_count == len(DoneTargets):
             done = True
         else:
@@ -323,16 +409,20 @@ class Enviroment:
         if done:
             if self.exist_bmgs.get(bmg_.bmg_s, 0) == 0:
                 self.exist_bmgs[bmg_.bmg_s] = 1
-                reward += 5
+                reward += 0.2
                 result_['Chemical composition'] = bmg_.bmg_s
+                # Invserse the normalization of the target values
+                for target in result_:
+                    if target in self.minmax_record:
+                        result_[target] = self.inverse_normal_targets(target, result_[target])
                 self.new_bmgs.append(result_)
+                logger.info('Find new BMGs: %s, reward: %s', bmg_.bmg_s, reward)
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
                 ubc_reward = Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
-                reward += ubc_reward
-                logger.info('Find existing BMGs: %s, reward: %s', bmg_.bmg_s, ubc_reward)
+                reward += ubc_reward / 10
+                # logger.info('Find existing BMGs: %s, reward: %s', bmg_.bmg_s, ubc_reward)
                 done = False
-        reward = reward / 10
         return reward, done
     
     def save_bmgs(self, path):
@@ -350,32 +440,20 @@ def unit_test():
         assert env.judge_s(s)
     print('len(env.init_pool):', len(env.init_pool))
     print(env.matrix_thresholds)
-    # mandatory_elements = {
-    # 'Zr': (40, 70),
-    # 'Cu': (10, 25),
-    # 'Ni': (5, 15),
-    # 'Al': (5, 15)
-    # }
-    # optional_elements = {
-    #     'Ag': (0, 10),
-    #     'Ti': (0, 10),
-    #     'La': (0, 10),
-    #     'Ce': (0, 10),
-    #     'Gd': (0, 10),
-    #     'Y': (0, 10)
-    # } 
-    # for epoch in range(100):
-    #     # s = env.reset_by_constraint(mandatory_elements, optional_elements, 5)
-    #     s = env.reset()
-    #     for step in range(MaxStep):
-    #         indexs = np.where(s != 0)[0]
-    #         a = np.random.rand(len(indexs)) * A_Scale
-    #         a = a - a.mean()
-    #         s_, r, done = env.step(s, a)
-    #         if done:
-    #             print(r, done)
-    #             break
-    #         s = s_
+   
+    for epoch in range(100):
+        random_base_matrix = np.random.choice(list(env.init_base_matrix.keys()))
+        s = env.reset_by_constraint(*env.init_base_matrix[random_base_matrix])
+        for step in range(MaxStep):
+            indexs = np.where(s != 0)[0]
+            a = np.random.rand(len(indexs)) * A_Scale
+            a = a - a.mean()
+            s_, r, done = env.step(s, a)
+            if done:
+                print("step:", step, "r:", r, "done:", done)
+                break
+            s = s_
+
 
 # python -m env.enviroment
 if __name__ == '__main__':

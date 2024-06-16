@@ -59,7 +59,7 @@ class BaseAgent(ABC):
             avg_reward = np.mean(rewards)
 
             # Determine the proportion of replacements based on avg_reward
-            replacement_ratio = max(min(0.1, (self.trust_pool.ave_reward - avg_reward) / 2), 0)  # Adjust the scaling factor as needed
+            replacement_ratio = max(min(0.05, (self.trust_pool.ave_reward - avg_reward) / 2), 0)  # Adjust the scaling factor as needed
             num_replacements = int(batch_size * replacement_ratio)
 
             # Sample replacements from the trust pool
@@ -113,17 +113,14 @@ class BaseAgent(ABC):
         for _ in range(episodes):
             rewards = []
             state = self.env.reset()
-            steps = 0
+            step = 0
             done = False
-            while not done and steps < MaxStep:
+            while not done and step < MaxStep:
                 action = self.select_action(state, explore=False)
-                next_state, reward, done = self.env.step(state, action)
+                next_state, reward, done = self.env.step(state, action, step)
                 state = next_state
                 rewards.append(reward)
-                steps += 1
-                if done and reward in {-0.5, -1}:
-                    state = self.env.reset()
-                    done = False
+                step += 1
             total_reward += np.mean(rewards)
             total_conv_reward += moving_average(rewards, min(len(rewards), 10))[-1]
 

@@ -17,6 +17,10 @@ from env.enviroment import Enviroment
 class TrustPool:
     def __init__(self):
         self.data = pd.read_excel(DataPath).drop(columns=DropColumns)
+        # Normalize the data
+        for col in TargetColumns:
+            self.data[col] = (self.data[col] - self.data[col].min()) / (self.data[col].max() - self.data[col].min())
+        self.data[CompositionColumns] = self.data[CompositionColumns].apply(lambda row: row / row.sum(), axis=1)
         self.env = Enviroment()
         self.models = self.env.models
         self.fill_na_with_models()
@@ -24,8 +28,8 @@ class TrustPool:
 
     def fill_na_with_models(self):
         best_models = self.env.best_models
-        for target_column in self.models.target_columns:
-            X_pred = self.data[self.data[target_column].isna()].drop(columns=self.models.target_columns)
+        for target_column in TargetColumns:
+            X_pred = self.data[self.data[target_column].isna()].drop(columns=TargetColumns)
             if X_pred.empty:
                 continue
 
@@ -77,7 +81,7 @@ class TrustPool:
                 s, s_ , a = row_i.tolist(), row_j.tolist(), diff.tolist() 
                 result = {col: self.data.at[i, col] for col in self.models.target_columns}
                 result_ = {col: self.data.at[j, col] for col in self.models.target_columns}
-                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), result, result_)
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), 0, result, result_)
                 diff_map = {
                     's': s.copy(),
                     's_': s_.copy(),
@@ -89,12 +93,11 @@ class TrustPool:
                     'BMG': BMGs(s).bmg_s,
                     'BMG_': BMGs(s_).bmg_s,
                 }
-
                 # Record the reverse experience
                 s, s_ , a = row_j.tolist(), row_i.tolist(), (-diff).tolist()
                 result = {col: self.data.at[j, col] for col in self.models.target_columns}
                 result_ = {col: self.data.at[i, col] for col in self.models.target_columns}
-                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), result, result_)
+                r, done = self.env.reward(np.array(s), np.array(a), np.array(s_), 0, result, result_)
                 diff_map_reverse = {
                     's': s.copy(),
                     's_': s_.copy(),
@@ -150,8 +153,8 @@ def statistic_trust_pool(path):
     plt.savefig('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool_r_distribution.png', dpi=800)
     
 def main():
-    # trust_pool = TrustPool()
-    # trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
+    trust_pool = TrustPool()
+    trust_pool.generate_experience_pool(A_Scale, '/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl', rewrite=True)
     statistic_trust_pool('/data/home/yeyongyu/SHU/ReinforceMatDesign/exp_pool/trust_pool.jsonl')
 
 # python -m exp.TrustPool
