@@ -165,7 +165,15 @@ class PPOPolicyNetwork(nn.Module):
         )
         self.log_std_head = nn.Linear(128, action_dim)
         self.value_head = nn.Linear(128, 1)
-        
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+    
     def forward(self, state):
         x = self.fc_s(state)
         action_mean = self.mean_head(x)
@@ -197,8 +205,16 @@ class PPOActorNetwork(nn.Module):
         )
         self.std_head = nn.Sequential(
             nn.Linear(128, action_dim),
-            nn.Tanh()
+            nn.LogSigmoid()
         )
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, state):
         x = self.fc(state)
@@ -224,6 +240,14 @@ class PPOCriticNetwork(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(128, 1)
         )
+        self._initialize_weights()
+        
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, state):
         state_value = self.fc(state)

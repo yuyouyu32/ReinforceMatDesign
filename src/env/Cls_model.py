@@ -1,8 +1,8 @@
 import glob
 
 import pandas as pd
-from catboost import CatBoostClassifier
-from lightgbm import LGBMClassifier
+# from catboost import CatBoostClassifier
+# from lightgbm import LGBMClassifier
 from sklearn.discriminant_analysis import (LinearDiscriminantAnalysis,
                                            QuadraticDiscriminantAnalysis)
 from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
@@ -73,8 +73,8 @@ class Cls_Model:
             model = BernoulliNB(**eval(best_param))
         elif model_name == 'QuadraticDiscriminantAnalysis':
             model = QuadraticDiscriminantAnalysis(**eval(best_param))
-        elif model_name == 'CatBoostClassifier':
-            model = CatBoostClassifier(**eval(best_param))
+        # elif model_name == 'CatBoostClassifier':
+            # model = CatBoostClassifier(**eval(best_param))
         else:
             raise ValueError(f"Model {model_name} is not recognized.")
 

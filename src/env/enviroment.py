@@ -271,9 +271,11 @@ class Enviroment:
         Returns:
             np.ndarray: state vector
         """
+        if len(mandatory_elements) > self.max_com_num:
+            raise ValueError("The number of mandatory elements is out of range.")
         k = min(k, self.max_com_num)
         # Step 0: Randomly select optional elements
-        optional_len = np.random.randint(k - len(mandatory_elements) + 1)
+        optional_len = np.random.randint(max(self.min_com_num - len(mandatory_elements), 0), k - len(mandatory_elements) + 1)
         
         # Step 1: Randomly select optional elements
         selected_optional_elements = random.sample(list(optional_elements.keys()), optional_len)
@@ -293,6 +295,7 @@ class Enviroment:
         for element in state:
             state[element] = np.round((state[element] / total), 4)
         
+        assert len(state) >= self.min_com_num and len(state) <= self.max_com_num
         # Step 4: Create the final state vector
         state_vector = np.zeros(len(CompositionColumns))
         for element, value in state.items():

@@ -85,7 +85,7 @@ class TD3Agent(BaseAgent):
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(list(self.critic.parameters()), max_norm=1.0)  # Gradient clipping
+        nn.utils.clip_grad_norm_(list(self.critic.parameters()), max_norm=0.5)  # Gradient clipping
         self.critic_optimizer.step()
         
         k = torch.count_nonzero(states, dim=1)  # Count non-zero elements in the state tensor
@@ -95,7 +95,7 @@ class TD3Agent(BaseAgent):
             # Update the actor network using the deterministic policy gradient
             self.actor_optimizer.zero_grad()
             actor_loss.backward()       
-            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)  # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=0.5)  # Gradient clipping
             self.actor_optimizer.step()
              # Update the target networks
 

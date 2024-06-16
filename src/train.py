@@ -1,5 +1,6 @@
 import click
 from RLs.TD3 import TD3Agent
+from RLs.PPO import PPOAgent
 from RLs.Trainer import Trainer
 from config import logging, N_Action, N_State
 
@@ -20,6 +21,10 @@ def train(model, use_per, use_trust, batch_size, episodes, save_path, start_time
     """Train a RLs agent with given parameters."""
     if model == 'td3':
         agent = TD3Agent(N_State, N_Action, use_per=use_per, use_trust=use_trust)
+    elif model == 'ppo':
+        agent = PPOAgent(N_State, N_Action)
+    else:
+        raise ValueError(f"Model {model} not supported.")
     trainer = Trainer(agent, batch_size=batch_size, episodes=episodes, save_path=save_path, start_timesteps=start_timesteps, log_episodes=log_episodes, eval_steps=eval_steps)
     trainer.train()
 
