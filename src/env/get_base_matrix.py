@@ -46,6 +46,7 @@ def main():
     
     df = get_row_matrix(df)
     result = get_base_matrix_dict(df)
+    # ['Ag', 'Al', 'Au', 'Ca', 'Ce', 'Co', 'Cu', 'Dy', 'Er', 'Fe', 'Gd', 'Hf', 'Ho', 'La', 'Lu', 'Mg', 'Mo', 'Nb', 'Nd', 'Ni', 'P', 'Pd', 'Pr', 'Pt', 'Sc', 'Sm', 'Sr', 'Ta', 'Tb', 'Ti', 'Tm', 'W', 'Y', 'Yb', 'Zn', 'Zr']
     json.dump(result, open('../data/base_matrix.json', 'w'), indent=4, ensure_ascii=False)
     
 # python -m env.get_base_matrix

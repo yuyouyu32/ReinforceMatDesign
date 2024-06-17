@@ -60,28 +60,29 @@ class PPOAgent(BaseAgent):
         return advantages
     
     def train_step(self, batch_size=64):
+        
         states, actions, log_probs_old, rewards, dones, values, next_values = zip(*self.memory)
 
-        states = torch.tensor(states, dtype=torch.float32).to(self.device)
-        actions = torch.tensor(actions, dtype=torch.float32).to(self.device)
-        log_probs_old = torch.tensor(log_probs_old, dtype=torch.float32).to(self.device)
-        rewards = torch.tensor(rewards, dtype=torch.float32).to(self.device)
-        dones = torch.tensor(dones, dtype=torch.float32).to(self.device)
-        values = torch.tensor(values, dtype=torch.float32).to(self.device)
-        next_values = torch.tensor(next_values, dtype=torch.float32).to(self.device)
+        states = torch.tensor(np.array(states), dtype=torch.float32).to(self.device)
+        actions = torch.tensor(np.array(actions), dtype=torch.float32).to(self.device)
+        log_probs_old = torch.tensor(np.array(log_probs_old), dtype=torch.float32).to(self.device)
+        rewards = torch.tensor(np.array(rewards), dtype=torch.float32).to(self.device)
+        dones = torch.tensor(np.array(dones), dtype=torch.float32).to(self.device)
+        values = torch.tensor(np.array(values), dtype=torch.float32).to(self.device)
+        next_values = torch.tensor(np.array(next_values), dtype=torch.float32).to(self.device)
 
         advantages = self.compute_advantages(rewards, values, next_values, dones)
         advantages = torch.tensor(advantages, dtype=torch.float32).to(self.device)
         returns = advantages + values
 
-        # Standardize advantages
-        if len(advantages) > 1:
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        # # Standardize advantages
+        # if len(advantages) > 1:
+        #     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         dataset_size = len(states)
         indices = np.arange(dataset_size)
         critic_loss_record = []
         actor_loss_record = []
-
+        train_step = 0
         for _ in range(self.update_epochs):
             np.random.shuffle(indices)
             for start in range(0, dataset_size, batch_size):
@@ -122,41 +123,15 @@ class PPOAgent(BaseAgent):
                 
                 actor_loss_record.append(total_loss.item())
                 critic_loss_record.append(value_loss.item())
+                train_step += 1
+                
             
             # Update learning rate schedulers after each epoch
             self.critic_scheduler.step(np.mean(critic_loss_record))
             self.actor_scheduler.step(np.mean(actor_loss_record))
 
         self.memory = []
-        return np.mean(critic_loss_record), np.mean(actor_loss_record)
-
-
-    def train(self, max_episodes):
-        for episode in range(max_episodes):
-            state = self.env.reset()
-            done = False
-            step = 0
-            while step < 100:
-                action, action_log_prob = self.select_action(state)
-                next_state, reward, done = self.env.step(state, action)
-
-                state_tensor = torch.tensor(state, dtype=torch.float32)
-                next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
-
-                state_value = self.critic(state_tensor).item()
-                next_state_value = self.critic(next_state_tensor).item()
-
-                transition = (state, action, action_log_prob, reward, done, state_value, next_state_value)
-                self.store_experience(transition)
-
-                state = next_state
-                if done:
-                    state = self.env.reset()
-                    done = False
-                step += 1
-
-            critic_loss, actor_loss = self.train_step()
-            print(f"Episode: {episode}, Critic Loss: {critic_loss}, Actor Loss: {actor_loss}")
+        return np.mean(critic_loss_record), np.mean(actor_loss_record), train_step
             
 
 def unit_test():

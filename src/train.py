@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 @click.option('--use_per', is_flag=True, default=False, help='Use Prioritized Experience Replay.')
 @click.option('--use_trust', is_flag=True, default=False, help='Use Trusted Experience Replay.')
 @click.option('--batch_size', default=256, help='Batch size for training.')
-@click.option('--episodes', default=5000, help='Number of episodes to train.')
+@click.option('--total_steps', default=1e5, help='Number of steps to train.')
 @click.option('--save_path', default='../ckpts/TD3', help='Path to save the trained model.')
 @click.option('--start_timesteps', default=500, help='Timesteps to start training.')
 @click.option('--log_episodes', default=10, help='Log every n episodes.')
 @click.option('--eval_steps', default=1000, help='Number of steps to evaluate the model.')
 
-def train(model, use_per, use_trust, batch_size, episodes, save_path, start_timesteps, log_episodes, eval_steps):
+def train(model, use_per, use_trust, batch_size, total_steps, save_path, start_timesteps, log_episodes, eval_steps):
     """Train a RLs agent with given parameters."""
     if model == 'td3':
         agent = TD3Agent(N_State, N_Action, use_per=use_per, use_trust=use_trust)
@@ -25,7 +25,7 @@ def train(model, use_per, use_trust, batch_size, episodes, save_path, start_time
         agent = PPOAgent(N_State, N_Action)
     else:
         raise ValueError(f"Model {model} not supported.")
-    trainer = Trainer(agent, batch_size=batch_size, episodes=episodes, save_path=save_path, start_timesteps=start_timesteps, log_episodes=log_episodes, eval_steps=eval_steps)
+    trainer = Trainer(agent, batch_size=batch_size, total_steps=total_steps, save_path=save_path, start_timesteps=start_timesteps, log_episodes=log_episodes, eval_steps=eval_steps)
     trainer.train()
 
 if __name__ == '__main__':

@@ -26,15 +26,15 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     def __init__(self, agent: Union[BaseAgent, PPOAgent, TD3Agent],
-        batch_size: int, episodes: int, save_path: str, start_timesteps: int = 500, log_episodes: int = 10, eval_steps: int = 1000):
+        batch_size: int, total_steps: int, save_path: str, start_timesteps: int = 500, log_episodes: int = 10, eval_steps: int = 1000):
         self.agent = agent
         self.env: Enviroment = self.agent.env
         self.batch_size = batch_size
-        self.episodes = episodes
+        self.total_steps = total_steps
         self.start_timesteps = start_timesteps
         self.save_path = save_path
         self.log_episodes = log_episodes
-        self.save_episodes = episodes // 5
+        self.save_steps = total_steps // 5
         self.eval_steps = eval_steps
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
@@ -65,9 +65,13 @@ class Trainer:
         return next_state, reward, done
         
     def train(self):
-        total_steps = 0
+        train_step = 0
+        step = 0
         done_record = []
-        for episode in tqdm(range(self.episodes)):
+        episode = 0
+        save_count = 1
+        progress_bar = tqdm(total=self.total_steps, desc="Training")
+        while train_step < self.total_steps:
             random_base_element = np.random.choice(list(self.env.init_base_matrix.keys()))
             state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
             done = False
@@ -75,7 +79,7 @@ class Trainer:
             episode_rewards = []
             episode_c_loss, episode_a_loss = [], []
 
-            while (not done) and (episode_step <= MaxStep):
+            while (not done) and (episode_step < MaxStep):
                 if self.agent.name in {"PPO"}:
                     next_state, reward, done = self.ppo_train(state)
                 elif self.agent.name in {"TD3"}:
@@ -84,65 +88,73 @@ class Trainer:
                     raise ValueError("Unknown agent name")
                 state = next_state
                 episode_rewards.append(reward)
-                total_steps += 1
+                step += 1
                 episode_step += 1
                 if done:
                     if reward < 0:
+                        done_record.append(0)
                         state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
-                        done = False
+                        if train_step > 1000:
+                            done = False
                     else:
                         done_record.append(1)
+                        state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
+                        done = False
 
-                if self.agent.name in {"TD3"} and total_steps >= self.start_timesteps:
+                if self.agent.name in {"TD3"} and step >= self.start_timesteps:
                     c_loss, a_loss = self.agent.train_step(self.batch_size)
                     episode_c_loss.append(c_loss)
                     episode_a_loss.append(a_loss)
-                    train_steps = total_steps - self.start_timesteps
-                    # if train_steps % self.eval_steps == 0:
-                    #     logger.info(f"Train: {train_steps} steps, start eval...")
+                    train_step += 1
+                    progress_bar.update(1)
+                    # if total_steps % self.eval_steps == 0:
+                    #     logger.info(f"Train: {total_steps} steps, start eval...")
                     #     eval_reward, eval_conv_reward = self.agent.evaluate_policy(episodes=5)
-                    #     self.writer.add_scalar('Reward/Eval', eval_reward, train_steps)
-                    #     self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, train_steps)
-                    #     logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
-            if not done:
-                done_record.append(0)  
+                    #     self.writer.add_scalar('Reward/Eval', eval_reward, total_steps)
+                    #     self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, total_steps)
+                    #     logger.info(f"Eval: {total_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
+            episode += 1
             if self.agent.name in {"PPO"}:
-                average_c_loss, average_a_loss = self.agent.train_step(self.batch_size)       
+                average_c_loss, average_a_loss, offline_train_steps = self.agent.train_step(self.batch_size)
+                train_step += offline_train_steps
+                progress_bar.update(offline_train_steps)
             elif self.agent.name in {"TD3"}:
                 average_c_loss = np.mean(episode_c_loss)
                 average_a_loss = np.mean(episode_a_loss)
                 
-            if total_steps >= self.start_timesteps:
-                self.writer.add_scalar('Loss/Critic', average_c_loss, episode)
-                self.writer.add_scalar('Loss/Actor', average_a_loss, episode)
+            if step >= self.start_timesteps:
+                self.writer.add_scalar('Loss/Critic', average_c_loss, train_step)
+                self.writer.add_scalar('Loss/Actor', average_a_loss, train_step)
                 
             average_reward = np.mean(episode_rewards)
             conv_reward = moving_average(episode_rewards, min(10, episode_step))
     
             # Add to TensorBoard
-            self.writer.add_scalar('Reward/Train', average_reward, episode)
-            self.writer.add_scalar('Reward/Train_con10', conv_reward[-1], episode)
+            self.writer.add_scalar('Reward/Train', average_reward, train_step)
+            self.writer.add_scalar('Reward/Train_con10', conv_reward[-1], train_step)
 
 
             if episode % self.log_episodes == 0:
-                logger.info(f"Train Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}, Conv Reward: {round(conv_reward[-1], 2)}")
-                if total_steps >= self.start_timesteps:
-                    logger.info(f"Train Episode: {episode + 1}/{self.episodes} Critic Loss: {average_c_loss}, Actor Loss: {average_a_loss}")
+                logger.info(f"Train step: {train_step}/{self.total_steps}, Ave Reward: {round(average_reward, 2)}, Conv Reward: {round(conv_reward[-1], 2)}")
+                if step >= self.start_timesteps:
+                    logger.info(f"Train step: {train_step}/{self.total_steps} Critic Loss: {average_c_loss}, Actor Loss: {average_a_loss}")
 
-            if episode % self.save_episodes == 0 and total_steps >= self.start_timesteps:
-                self.save_by_episode(episode)
+            if  train_step > save_count * self.save_steps and step >= self.start_timesteps:
+                self.save_by_steps(train_step)
+                save_count += 1
                 self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         
         self.writer.close()
-        self.save_by_episode(episode)
+        progress_bar.close()
+        self.save_by_steps(train_step)
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         np.save(os.path.join(self.save_path, "done_record.npy"), np.array(done_record))
-        logger.info(f"Finished Train: {episode + 1}")
+        logger.info(f"Finished Train: {train_step} steps")
         
         
 
-    def save_by_episode(self, episode):
-        save_path = os.path.join(self.save_path, f"episode_{episode}")
+    def save_by_steps(self, train_step):
+        save_path = os.path.join(self.save_path, f"episode_{train_step}")
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         self.agent.save_model(self.agent.actor, save_path + f"/{self.agent.name}_actor.pth")
