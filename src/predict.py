@@ -1,12 +1,13 @@
 import click
-from RLs.DDPG import DDPGAgent
+from RLs.TD3 import TD3Agent
+from RLs.PPO import PPOAgent
 from RLs.Predictor import Predictor
 from config import logging, N_Action, N_State
 
 logger = logging.getLogger(__name__)
 
 @click.command()
-@click.option('--model', default='ddpg', help='RL model agent.')
+@click.option('--model', default='td3', help='RL model agent.')
 @click.option('--c_pth', default='../ckpts/ddpg/', help='Critic model to predict.')
 @click.option('--a_pth', default='../ckpts/ddpg/', help='Actor model to predict.')
 @click.option('--episodes', default=1500, help='Number of episodes to predict.')
@@ -16,8 +17,10 @@ logger = logging.getLogger(__name__)
 
 def predict(model, c_pth, a_pth, episodes, save_path, log_episodes, explore_base_index):
     """Train a RLs agent with given parameters."""
-    if model == 'ddpg':
-        agent = DDPGAgent(N_State, N_Action)
+    if model == 'td3':
+        agent = TD3Agent(N_State, N_Action)
+    elif model == 'ppo':
+        agent = PPOAgent(N_State, N_Action)
     else:
         raise ValueError(f"Model {model} not supported.")
     predictor = Predictor(agent=agent, episodes=episodes, save_path=save_path, log_episodes=log_episodes)

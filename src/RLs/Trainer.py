@@ -66,7 +66,7 @@ class Trainer:
         
     def train(self):
         total_steps = 0
-
+        done_record = []
         for episode in tqdm(range(self.episodes)):
             random_base_element = np.random.choice(list(self.env.init_base_matrix.keys()))
             state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
@@ -86,9 +86,12 @@ class Trainer:
                 episode_rewards.append(reward)
                 total_steps += 1
                 episode_step += 1
-                if done and reward < 0:
-                    state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
-                    done = False
+                if done:
+                    if reward < 0:
+                        state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
+                        done = False
+                    else:
+                        done_record.append(1)
 
                 if self.agent.name in {"TD3"} and total_steps >= self.start_timesteps:
                     c_loss, a_loss = self.agent.train_step(self.batch_size)
@@ -101,9 +104,10 @@ class Trainer:
                     #     self.writer.add_scalar('Reward/Eval', eval_reward, train_steps)
                     #     self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, train_steps)
                     #     logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
-                    
+            if not done:
+                done_record.append(0)  
             if self.agent.name in {"PPO"}:
-                average_c_loss, average_a_loss = self.agent.train_step(self.batch_size)
+                average_c_loss, average_a_loss = self.agent.train_step(self.batch_size)       
             elif self.agent.name in {"TD3"}:
                 average_c_loss = np.mean(episode_c_loss)
                 average_a_loss = np.mean(episode_a_loss)
@@ -128,16 +132,14 @@ class Trainer:
             if episode % self.save_episodes == 0 and total_steps >= self.start_timesteps:
                 self.save_by_episode(episode)
                 self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
-            
-        logger.info(f"Finished Train: {train_steps} steps, start final eval...")
-        eval_reward, eval_conv_reward = self.agent.evaluate_policy(episodes=5)
-        self.writer.add_scalar('Reward/Eval', eval_reward, train_steps)
-        self.writer.add_scalar('Reward/Eval_con10', eval_conv_reward, train_steps)
-        logger.info(f"Eval: {train_steps} steps, Ave Reward: {round(eval_reward, 2)}, Conv Reward: {round(eval_conv_reward, 2)}")
-
+        
         self.writer.close()
         self.save_by_episode(episode)
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
+        np.save(os.path.join(self.save_path, "done_record.npy"), np.array(done_record))
+        logger.info(f"Finished Train: {episode + 1}")
+        
+        
 
     def save_by_episode(self, episode):
         save_path = os.path.join(self.save_path, f"episode_{episode}")
