@@ -43,12 +43,12 @@ class Predictor:
             random_base_element = np.random.choice(list(self.env.init_base_matrix.keys()))
             state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
         else:
-            state = self.env.reset_by_constraint(*ExploreBases[explore_base_index])
+            mandatory_elements, optional_elements, k = ExploreBases[explore_base_index]
+            state = self.env.reset_by_constraint(mandatory_elements, optional_elements, k, replace_flag=False, min_optional_len=1)
         return state
 
     def predict(self, explore_base_index: Optional[int] = None):
         total_steps = 0
-        raw_reward_record = deque(maxlen=self.window_size)
 
         for episode in tqdm(range(self.episodes)):
             state = self.reset_state(explore_base_index)
@@ -58,7 +58,7 @@ class Predictor:
 
             while not done and episode_step <= MaxStep:
                 action = self.agent.select_action(state)
-                next_state, reward, done = self.env.step(state, action, episode_step)
+                next_state, reward, done = self.env.step(state, action)
 
                 state = next_state
                 episode_reward += reward
@@ -68,24 +68,17 @@ class Predictor:
                 if done:
                     if reward < 0:
                         state = self.reset_state(explore_base_index)
-                        done = False
-                    else:
-                        episode_reward = reward * episode_step  # Reward is the final reward
-                        self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
+                    done = False
+                    
 
             average_reward = episode_reward / episode_step
             self.reward_record.append(average_reward)
-            raw_reward_record.append(average_reward)
 
-            if len(raw_reward_record) == self.window_size:
-                smoothed_reward = moving_average(list(raw_reward_record), self.window_size)[-1]
+            self.writer.add_scalar("Reward", average_reward, episode)
+            if episode % self.log_episodes == 0:
+                logger.info(f"Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}")
 
-                # Add to TensorBoard
-                self.writer.add_scalar('Reward/Average', smoothed_reward, episode)
-
-            if episode % self.log_episodes == 0 and len(raw_reward_record) == self.window_size:
-                logger.info(f"Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(smoothed_reward, 2)}")
-
+        self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         self.save_logs(self.reward_record)
         self.writer.close()
 

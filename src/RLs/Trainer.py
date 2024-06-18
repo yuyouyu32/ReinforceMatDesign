@@ -70,7 +70,7 @@ class Trainer:
         done_record = []
         episode = 0
         save_count = 1
-        progress_bar = tqdm(total=self.total_steps, desc="Training")
+        # progress_bar = tqdm(total=self.total_steps, desc="Training")
         while train_step < self.total_steps:
             random_base_element = np.random.choice(list(self.env.init_base_matrix.keys()))
             state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
@@ -106,7 +106,7 @@ class Trainer:
                     episode_c_loss.append(c_loss)
                     episode_a_loss.append(a_loss)
                     train_step += 1
-                    progress_bar.update(1)
+                    # progress_bar.update(1)
                     # if total_steps % self.eval_steps == 0:
                     #     logger.info(f"Train: {total_steps} steps, start eval...")
                     #     eval_reward, eval_conv_reward = self.agent.evaluate_policy(episodes=5)
@@ -117,12 +117,12 @@ class Trainer:
             if self.agent.name in {"PPO"}:
                 average_c_loss, average_a_loss, offline_train_steps = self.agent.train_step(self.batch_size)
                 train_step += offline_train_steps
-                progress_bar.update(offline_train_steps)
-            elif self.agent.name in {"TD3"}:
+                # progress_bar.update(offline_train_steps)
+            elif self.agent.name in {"TD3"} and step >= self.start_timesteps:
                 average_c_loss = np.mean(episode_c_loss)
                 average_a_loss = np.mean(episode_a_loss)
                 
-            if step >= self.start_timesteps:
+            if step >= self.start_timesteps and train_step > 0:
                 self.writer.add_scalar('Loss/Critic', average_c_loss, train_step)
                 self.writer.add_scalar('Loss/Actor', average_a_loss, train_step)
                 
@@ -130,8 +130,9 @@ class Trainer:
             conv_reward = moving_average(episode_rewards, min(10, episode_step))
     
             # Add to TensorBoard
-            self.writer.add_scalar('Reward/Train', average_reward, train_step)
-            self.writer.add_scalar('Reward/Train_con10', conv_reward[-1], train_step)
+            if train_step > 0:
+                self.writer.add_scalar('Reward/Train', average_reward, train_step)
+                self.writer.add_scalar('Reward/Train_con10', conv_reward[-1], train_step)
 
 
             if episode % self.log_episodes == 0:
@@ -145,7 +146,7 @@ class Trainer:
                 self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         
         self.writer.close()
-        progress_bar.close()
+        # progress_bar.close()
         self.save_by_steps(train_step)
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         np.save(os.path.join(self.save_path, "done_record.npy"), np.array(done_record))

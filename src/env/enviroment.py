@@ -245,7 +245,7 @@ class Enviroment:
         s[CompositionColumns.index(new_element)] = temp_value
         return s
       
-    def reset_by_constraint(self, mandatory_elements: Dict[str, Tuple[int]], optional_elements: Dict[str, Tuple[int]], k: int) -> np.ndarray:
+    def reset_by_constraint(self, mandatory_elements: Dict[str, Tuple[int]], optional_elements: Dict[str, Tuple[int]], k: int, replace_flag = True, min_optional_len: int = 0) -> np.ndarray:
         """
         Reset the state vector based on the constraints.
         
@@ -276,7 +276,7 @@ class Enviroment:
         k = min(k, self.max_com_num)
         # Step 0: Randomly select optional elements
         optional_len = np.random.randint(max(self.min_com_num - len(mandatory_elements), 0), k - len(mandatory_elements) + 1)
-        
+        optional_len = max(optional_len, min_optional_len)
         # Step 1: Randomly select optional elements
         selected_optional_elements = random.sample(list(optional_elements.keys()), optional_len)
         
@@ -294,14 +294,13 @@ class Enviroment:
         total = sum(state.values())
         for element in state:
             state[element] = np.round((state[element] / total), 4)
-        
         assert len(state) >= self.min_com_num and len(state) <= self.max_com_num
         # Step 4: Create the final state vector
         state_vector = np.zeros(len(CompositionColumns))
         for element, value in state.items():
             index = CompositionColumns.index(element)
             state_vector[index] = value
-        if np.random.rand() > 0.8:
+        if replace_flag and np.random.rand() > 0.8:
             state_vector = self.replace_element(state_vector)
         self.env_step = 0
         return state_vector
