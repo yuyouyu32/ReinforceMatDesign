@@ -155,7 +155,7 @@ class Trainer:
         
 
     def save_by_steps(self, train_step):
-        save_path = os.path.join(self.save_path, f"episode_{train_step}")
+        save_path = os.path.join(self.save_path, f"train_steps_{train_step}")
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         self.agent.save_model(self.agent.actor, save_path + f"/{self.agent.name}_actor.pth")

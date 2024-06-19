@@ -15,7 +15,7 @@ ClsTargetColumns = ['cls_label']
 ClsResultpath = '../results/Cls'
 
 # Seed config
-Seed = 32
+Seed = 21
 
 # ENV config
 N_State = len(CompositionColumns)

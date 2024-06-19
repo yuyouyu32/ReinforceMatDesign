@@ -32,7 +32,7 @@ class PPOAgent(BaseAgent):
         self.entropy_coeff = entropy_coeff
 
 
-    def select_action(self, state):
+    def select_action(self, state, explore: bool=True):
         state = state / sum(state)
         state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
         k = torch.count_nonzero(state, dim=1).item()  # Count non-zero elements in the state tensor

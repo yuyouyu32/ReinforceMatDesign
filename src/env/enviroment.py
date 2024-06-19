@@ -300,7 +300,7 @@ class Enviroment:
         for element, value in state.items():
             index = CompositionColumns.index(element)
             state_vector[index] = value
-        if replace_flag and np.random.rand() > 0.8:
+        if replace_flag and np.random.rand() > 0.5:
             state_vector = self.replace_element(state_vector)
         self.env_step = 0
         return state_vector

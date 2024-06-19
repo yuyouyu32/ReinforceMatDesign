@@ -57,7 +57,7 @@ class Predictor:
             episode_reward = 0
 
             while not done and episode_step <= MaxStep:
-                action = self.agent.select_action(state)
+                action = self.agent.select_action(state, explore=False)
                 next_state, reward, done = self.env.step(state, action)
 
                 state = next_state

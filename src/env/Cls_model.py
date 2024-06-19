@@ -88,7 +88,9 @@ class Cls_Model:
         elif model_name == 'QuadraticDiscriminantAnalysis':
             model = QuadraticDiscriminantAnalysis(**eval_none(best_param))
         elif model_name == 'CatBoostClassifier':
-            model = CatBoostClassifier(**eval_none(best_param))
+            best_param = eval_none(best_param)
+            best_param['verbose'] = False
+            model = CatBoostClassifier(**best_param)
         else:
             raise ValueError(f"Model {model_name} is not recognized.")
 
@@ -126,10 +128,14 @@ class Cls_Model:
                 all_models[model_name] = MultinomialNB(**eval_none(best_param))
             elif model_name == 'BernoulliNB':
                 all_models[model_name] = BernoulliNB(**eval_none(best_param))
+            elif model_name == 'LinearDiscriminantAnalysis':
+                all_models[model_name] = LinearDiscriminantAnalysis(**eval_none(best_param))
             elif model_name == 'QuadraticDiscriminantAnalysis':
                 all_models[model_name] = QuadraticDiscriminantAnalysis(**eval_none(best_param))
             elif model_name == 'CatBoostClassifier':
-                all_models[model_name] = CatBoostClassifier(**eval_none(best_param))
+                best_param = eval_none(best_param)
+                best_param['verbose'] = False
+                all_models[model_name] = CatBoostClassifier(**best_param)
             else:
                 raise ValueError(f"Model {model_name} is not recognized.")
         return all_models
@@ -139,9 +145,12 @@ class Cls_Model:
         y_tests = []
         y_pred_probas = []
         kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        smote = SMOTE(random_state=42)
+        
         for train_index, test_index in kf.split(features, target):
             X_train, X_test = features[train_index], features[test_index]
             y_train, y_test = target[train_index], target[test_index]
+            X_train, y_train = smote.fit_resample(X_train, y_train)
             model.fit(X_train, y_train)
             y_pred_proba = model.predict_proba(X_test)[:, 1]
             y_tests.extend(y_test)
@@ -151,8 +160,6 @@ class Cls_Model:
     def get_cls_results(self, norm_features=True, save_path="../results/cls_pred_results"):
         x, y = self.data.get_features_for_target(self.target_columns[0])
         x = x.to_numpy()
-        smote = SMOTE(random_state=42)
-        x, y = smote.fit_resample(x, y)
         if norm_features:
             x_sums = x.sum(axis=1, keepdims=True)
             x = x / x_sums

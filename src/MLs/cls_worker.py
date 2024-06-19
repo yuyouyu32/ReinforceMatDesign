@@ -29,9 +29,6 @@ class ModelEvaluatorKFold:
         results = {}
         features = features.to_numpy()
         target = target.to_numpy()
-        # Over-sampling
-        smote = SMOTE(random_state=42)
-        features, target = smote.fit_resample(features, target)
         if norm_features:
             # 横向归一化到0-1
             row_sums = features.sum(axis=1, keepdims=True)
@@ -63,9 +60,12 @@ class ModelEvaluatorKFold:
         precision_scores = []
         recall_scores = []
         f1_scores = []
+        smote = SMOTE(random_state=42)
         for train_index, test_index in self.kf.split(features, target):
             X_train, X_test = features[train_index], features[test_index]
+            # Over-sampling
             y_train, y_test = target[train_index], target[test_index]
+            X_train, y_train = smote.fit_resample(X_train, y_train)
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
             auc_scores.append(roc_auc_score(y_test, y_pred))
