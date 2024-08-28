@@ -140,7 +140,7 @@ class Trainer:
                 if step >= self.start_timesteps:
                     logger.info(f"Train step: {train_step}/{self.total_steps} Critic Loss: {average_c_loss}, Actor Loss: {average_a_loss}")
 
-            if  train_step > save_count * self.save_steps and step >= self.start_timesteps:
+            if  (train_step > save_count * self.save_steps) and (step >= self.start_timesteps):
                 self.save_by_steps(train_step)
                 save_count += 1
                 self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
@@ -150,6 +150,8 @@ class Trainer:
         self.save_by_steps(train_step)
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         np.save(os.path.join(self.save_path, "done_record.npy"), np.array(done_record))
+        # print done_record length and 1 count
+        logger.info(f"Total done record: {len(done_record)}, 1 count: {sum(done_record)}")
         logger.info(f"Finished Train: {train_step} steps")
         
         

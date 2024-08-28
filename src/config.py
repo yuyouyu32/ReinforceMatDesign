@@ -25,7 +25,7 @@ Percentile = 0.8
 DoneRatio = 1.2
 MaxStep = 128
 Alpha = 2 / (math.sqrt((2 * math.log(MaxStep))/1)) # UBC 1 config
-OptionalResetElement = {'Ag', 'Ti', 'La', 'Ce', 'Gd', 'Y'}
+OptionalResetElement = {'Ag', 'Ti', 'La', 'Ce', 'Gd', 'Y', 'Nb', 'Sc'}
 
 
 # Exp Config
