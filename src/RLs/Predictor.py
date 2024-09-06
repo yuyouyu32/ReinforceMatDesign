@@ -47,6 +47,34 @@ class Predictor:
             state = self.env.reset_by_constraint(mandatory_elements, optional_elements, k, replace_flag=False, min_optional_len=1)
         return state
 
+
+    def draw_reward_q_curve(self, reward_record, q_values, episode):
+        # 给我绘制q值和reward的曲线,要求在同一张图上
+        import matplotlib.pyplot as plt
+        fig, ax1 = plt.subplots()
+
+        # Plot reward curve
+        ax1.set_xlabel("Episode")
+        ax1.set_ylabel("Reward")
+        ax1.plot(range(len(reward_record)), reward_record, label="Reward")
+        ax1.tick_params(axis='y')
+
+        # Plot q-value curve
+        ax2 = ax1.twinx()
+        ax2.set_ylabel("Q-Value")
+        ax2.plot(range(len(q_values)), q_values, label="Q-Value", color='r')
+        ax2.tick_params(axis='y')
+
+        # Add legend and title
+        fig.tight_layout()
+        fig.legend(loc="upper right")
+        plt.title("Reward and Q-Value Curve")
+
+        # Show the plot
+        plt.savefig(os.path.join(self.save_path, f"reward_q_curve_{episode}.png"))
+        
+        
+        
     def predict(self, explore_base_index: Optional[int] = None):
         total_steps = 0
 
@@ -55,29 +83,31 @@ class Predictor:
             done = False
             episode_step = 0
             episode_reward = 0
-
+            q_values = []
+            reward_record = []
             while not done and episode_step <= MaxStep:
                 action = self.agent.select_action(state, explore=False)
                 next_state, reward, done = self.env.step(state, action)
-
+                q_value = self.agent.get_q_values(state, action)
                 state = next_state
                 episode_reward += reward
                 total_steps += 1
                 episode_step += 1
-
+                reward_record.append(reward)
+                q_values.append(q_value)
                 if done:
                     if reward < 0:
                         state = self.reset_state(explore_base_index)
                     done = False
                     
 
+            self.draw_reward_q_curve(reward_record, q_values, episode)
             average_reward = episode_reward / episode_step
             self.reward_record.append(average_reward)
 
             self.writer.add_scalar("Reward", average_reward, episode)
             if episode % self.log_episodes == 0:
                 logger.info(f"Episode: {episode + 1}/{self.episodes}, Ave Reward: {round(average_reward, 2)}")
-
         self.env.save_bmgs(os.path.join(self.save_path, "new_BMGs.xlsx"))
         self.save_logs(self.reward_record)
         self.writer.close()

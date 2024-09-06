@@ -54,10 +54,22 @@ class TD3Agent(BaseAgent):
         if explore:
             noise = self.noise(k)
             action = self.epsilon * noise + (1 - self.epsilon) * a
+        else:
+            action = a
         action *= self.action_scale
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         return action
 
+    
+    def get_q_values(self, state: np.ndarray, action: np.ndarray):
+        with torch.no_grad():
+            state = state / sum(state)
+            state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
+            action = torch.FloatTensor(action.reshape(1, -1)).to(self.device)
+            q_values = self.critic(state, action)
+        # (tensor([[2.7700]], device='cuda:0'), tensor([[3.2304]], device='cuda:0'))
+        # 计算两个tensor的均值，返回一个float
+        return torch.mean(q_values[0] + q_values[1]).item()
 
     def train_step(self, batch_size):
         self.total_it += 1
