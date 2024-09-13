@@ -14,11 +14,12 @@ class DQNAgent(BaseAgent):
 
         self.q_network = QNetwork(state_dim, action_dim).to(device)
         self.actor = DeterActorNet(state_dim, action_dim).to(device)
-        
-        
+
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=1e-3)
         self.scheduler = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9, patience=20)
 
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.actor_scheduler = ReduceLROnPlateau(self.actor_optimizer, mode='min', factor=0.9, patience=20)
         self.discount = 0.99
         self.tau = 0.005
         
@@ -54,7 +55,7 @@ class DQNAgent(BaseAgent):
 
         # Compute target Q values
         with torch.no_grad():
-            next_q_values = self.q_target(next_states)
+            next_q_values = self.q_network(next_states)
             next_q_max, _ = next_q_values.max(dim=1, keepdim=True)
             target_q = rewards.unsqueeze(1) + (1 - dones.unsqueeze(1)) * self.discount * next_q_max
 
@@ -64,21 +65,27 @@ class DQNAgent(BaseAgent):
         # Compute loss
         loss = (weights * (current_q - target_q).pow(2)).mean()
 
+        # Compute actor loss
+        actor_loss = -self.q_network(states).mean()
+
         # Optimize the Q network
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
         self.optimizer.step()
 
-        # Update the target network
-        for param, target_param in zip(self.q_network.parameters(), self.q_target.parameters()):
-            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+        # Optimize the actor network
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+        self.actor_optimizer.step()
         
         # Decay epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
         # Update the learning rate
         self.scheduler.step(loss.item())
+        self.actor_scheduler.step(actor_loss.item())
 
         if self.use_per and batch_idxes is not None:
             new_priorities = (torch.abs(current_q - target_q).cpu().data.numpy() + 1e-6).squeeze()
@@ -86,7 +93,7 @@ class DQNAgent(BaseAgent):
                 new_priorities = np.delete(new_priorities, replace_indices)
             self.buffer.update_priorities(batch_idxes, new_priorities)
         
-        return loss.item()
+        return loss.item(), actor_loss.item()
 
 def unit_test():
     from config import N_Action, N_State

@@ -1,6 +1,9 @@
 import click
 from RLs.TD3 import TD3Agent
 from RLs.PPO import PPOAgent
+from RLs.DQN import DQNAgent
+from RLs.DDPG import DDPGAgent
+from RLs.SAC import SACAgent
 from RLs.Predictor import Predictor
 from config import logging, N_Action, N_State
 
@@ -21,6 +24,12 @@ def predict(model, c_pth, a_pth, episodes, save_path, log_episodes, explore_base
         agent = TD3Agent(N_State, N_Action)
     elif model == 'ppo':
         agent = PPOAgent(N_State, N_Action)
+    elif model == 'dqn':
+        agent = DQNAgent(N_State, N_Action)
+    elif model == 'ddpg':
+        agent = DDPGAgent(N_State, N_Action)
+    elif model == 'sac':
+        agent = SACAgent(N_State, N_Action)
     else:
         raise ValueError(f"Model {model} not supported.")
     predictor = Predictor(agent=agent, episodes=episodes, save_path=save_path, log_episodes=log_episodes)

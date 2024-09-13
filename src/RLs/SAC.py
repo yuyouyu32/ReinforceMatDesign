@@ -125,8 +125,8 @@ class SACAgent(BaseAgent):
                 if replace_indices is not None:
                     td_errors = np.delete(td_errors, replace_indices)
                 self.buffer.update_priorities(batch_idxes, td_errors.squeeze())
-
-        return actor_loss.item(), critic1_loss.item(), critic2_loss.item(), alpha_loss.item()
+        critic_loss = (critic1_loss.item() + critic2_loss.item()) / 2
+        return critic_loss, actor_loss.item()
 
 def unit_test():
     from config import N_Action, N_State, Action_Space

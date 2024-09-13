@@ -43,14 +43,14 @@ class Trainer:
             os.makedirs(self.log_dir)
         self.writer = SummaryWriter(log_dir=self.log_dir)
         
-    def ddpg_train(self, state):
+    def off_policy_train(self, state):
         action = self.agent.select_action(state)
         next_state, reward, done = self.env.step(state, action)
         self.agent.store_experience(state, action, reward, next_state, done)
         
         return next_state, reward, done
     
-    def ppo_train(self, state):
+    def on_policy_train(self, state):
         action, action_log_prob = self.agent.select_action(state)
         next_state, reward, done = self.env.step(state, action)
 
@@ -81,9 +81,9 @@ class Trainer:
 
             while (not done) and (episode_step < MaxStep):
                 if self.agent.name in {"PPO"}:
-                    next_state, reward, done = self.ppo_train(state)
-                elif self.agent.name in {"TD3"}:
-                    next_state, reward, done = self.ddpg_train(state)
+                    next_state, reward, done = self.on_policy_train(state)
+                elif self.agent.name in {"TD3", "DDPG", "SAC", "DQN"}:
+                    next_state, reward, done = self.off_policy_train(state)
                 else:
                     raise ValueError("Unknown agent name")
                 state = next_state
@@ -101,7 +101,7 @@ class Trainer:
                         state = self.env.reset_by_constraint(*self.env.init_base_matrix[random_base_element])
                         done = False
 
-                if self.agent.name in {"TD3"} and step >= self.start_timesteps:
+                if self.agent.name in {"TD3", "DDPG", "SAC", "DQN"} and step >= self.start_timesteps:
                     c_loss, a_loss = self.agent.train_step(self.batch_size)
                     episode_c_loss.append(c_loss)
                     episode_a_loss.append(a_loss)
@@ -118,7 +118,7 @@ class Trainer:
                 average_c_loss, average_a_loss, offline_train_steps = self.agent.train_step(self.batch_size)
                 train_step += offline_train_steps
                 # progress_bar.update(offline_train_steps)
-            elif self.agent.name in {"TD3"} and step >= self.start_timesteps:
+            elif self.agent.name in {"TD3", "DDPG", "SAC", "DQN"} and step >= self.start_timesteps:
                 average_c_loss = np.mean(episode_c_loss)
                 average_a_loss = np.mean(episode_a_loss)
                 
