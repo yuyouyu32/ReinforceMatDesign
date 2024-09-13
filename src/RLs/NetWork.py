@@ -252,3 +252,48 @@ class PPOCriticNetwork(nn.Module):
     def forward(self, state):
         state_value = self.fc(state)
         return state_value
+    
+class StochasticActorNet(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(StochasticActorNet, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 512),
+            nn.LayerNorm(512),  
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),  
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),  
+            nn.LeakyReLU(),
+        )
+        self.mean_head = nn.Sequential(
+            nn.Linear(128, action_dim),
+            nn.Tanh()
+        )
+        self.log_std_head = nn.Linear(128, action_dim)
+        self._initialize_weights()
+        
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+    def forward(self, state):
+        x = self.fc(state)
+        action_mean = self.mean_head(x)
+        action_log_std = self.log_std_head(x)
+        action_std = torch.exp(action_log_std)
+        return action_mean, action_std, action_log_std
+
+    def sample(self, state):
+        action_mean, action_std, action_log_std = self.forward(state)
+        dist = torch.distributions.Normal(action_mean, action_std)
+        action = dist.rsample()  # Reparameterization trick
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        return action, log_prob, dist

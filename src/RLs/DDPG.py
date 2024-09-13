@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from config import A_Scale, N_Action
 from RLs.BaseAgent import BaseAgent
-from RLs.NetWork import DeterActorNet, DoubleQNet, device
+from RLs.NetWork import DeterActorNet, DoubleQNet, device, QNetwork
 
 class DDPGAgent(BaseAgent):
     def __init__(self, state_dim, action_dim, use_per: bool = False, use_trust: bool = False):
@@ -18,8 +18,8 @@ class DDPGAgent(BaseAgent):
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-5)
         self.actor_scheduler = ReduceLROnPlateau(self.actor_optimizer, mode='min', factor=0.9, patience=20)
 
-        self.critic = DoubleQNet(state_dim, action_dim).to(device)
-        self.critic_target = DoubleQNet(state_dim, action_dim).to(device)
+        self.critic = QNetwork(state_dim, action_dim).to(device)
+        self.critic_target = QNetwork(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3, weight_decay=1e-5)
         self.critic_scheduler = ReduceLROnPlateau(self.critic_optimizer, mode='min', factor=0.9, patience=20)
@@ -56,19 +56,18 @@ class DDPGAgent(BaseAgent):
         with torch.no_grad():
             k = torch.count_nonzero(next_states, dim=1)  # Count non-zero elements in the state tensor
             next_actions = self.actor_target(next_states, k)
-            target_q1, target_q2 = self.critic_target(next_states, next_actions)
-            target_q = torch.min(target_q1, target_q2)
+            target_q = self.critic_target(next_states, next_actions)
             rewards = rewards.view(-1, 1)
             dones = dones.view(-1, 1)
             target_q = rewards + (1 - dones) * self.discount * target_q
         self.actor.train()
         self.critic.train()
-        current_q1, current_q2 = self.critic(states, actions)
-        TD_Error_q1, TD_Error_q2 = current_q1 - target_q, current_q2 - target_q
-        weighted_TD_errors_1, weighted_TD_errors_2 = weights * TD_Error_q1, weights * TD_Error_q2
+        current_q = self.critic(states, actions)
+        TD_Error = current_q - target_q
+        weighted_TD_errors= weights * TD_Error
 
         # Use Mean Squared Error Loss directly
-        critic_loss = (weighted_TD_errors_1.pow(2).mean() + weighted_TD_errors_2.pow(2).mean())
+        critic_loss = weighted_TD_errors.pow(2).mean()
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -77,7 +76,7 @@ class DDPGAgent(BaseAgent):
 
         # Update the actor network using the deterministic policy gradient
         k = torch.count_nonzero(states, dim=1)  # Count non-zero elements in the state tensor
-        actor_loss = -self.critic(states, self.actor(states, k))[0].mean()
+        actor_loss = -self.critic(states, self.actor(states, k)).mean()
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
@@ -85,7 +84,7 @@ class DDPGAgent(BaseAgent):
         self.actor_optimizer.step()
 
         if self.use_per and batch_idxes is not None:
-            new_priorities = (torch.abs(TD_Error_q1) + torch.abs(TD_Error_q2)).cpu().data.numpy() + 1e-6
+            new_priorities = (torch.abs(TD_Error)).cpu().data.numpy() + 1e-6
             if replace_indices is not None:
                 new_priorities = np.delete(new_priorities, replace_indices)
             self.buffer.update_priorities(batch_idxes, new_priorities)
