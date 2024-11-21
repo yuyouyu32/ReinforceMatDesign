@@ -88,9 +88,9 @@ param_grid = {
     #     'max_depth': [3, 5, 7, 10, 20]
     # },
     'CatBoostClassifier': {
-        'iterations': [50, 100, 200, 500, 1000],
-        'learning_rate': [0.01, 0.05, 0.1, 0.2, 0.3],
-        'depth': [4, 6, 8, 10, 12]
+        'iterations': [50, 200, 500, 1000],
+        'learning_rate': [0.01, 0.1, 0.3],
+        'depth': [4, 8, 12]
     }
 }
 

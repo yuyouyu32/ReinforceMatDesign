@@ -7,9 +7,9 @@ Rules = """- Compositions with a calculated average atomic size difference great
 - Alloys with a greater variety of elements, especially those that introduce complexity without significantly increasing the tendency for crystalline phase formations, score higher.
 """
 
-EvalueSystem = "You will act as an expert in materials science, specializing in bulk metallic glass (BMG). Your task is to analyze provided data points, which are based on specific screening rules for HEA components."
+EvalueSystem = "You will act as an expert in materials science, specializing in bulk metallic glass (BMG). Your task is to analyze provided data points, which are based on specific screening rules for BMGs components."
 
-EvalueUser = """Firstly, understand and apply the following screening rules defined as RULE. These rules are crucial for evaluating the potential of each HEA component.I will also provide you with performance data for Real BMGs similar to the data in the DATA, which are actually measured and can be used as a reference for your evaluation.
+EvalueUser = """Firstly, understand and apply the following screening rules defined as RULE. These rules are crucial for evaluating the potential of each BMG component.I will also provide you with performance data for Real BMGs similar to the data in the DATA, which are actually measured and can be used as a reference for your evaluation.
 
 Secondly, evaluate each data point in DATA by assigning a score from 0 to 1, indicating its suitability for experimental validation in bulk metallic glass (BMG). A score of 1 signifies high relevance. Include a short explanation for each score, focusing on pertinent scientific concepts and considering the complexities and potential results of the experimental process in HEAs.
 

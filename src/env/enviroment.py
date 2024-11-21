@@ -67,6 +67,8 @@ class Enviroment:
             exist_bmgs (list): list of existing BMGs
         """
         df = pd.read_excel(excel_file)
+        # Filter the BMGs
+        # df = df[df['cls_label'] == 1]
         # Get the unique existing BMGs
         exist_bmgs = {composition: 0 for composition in df['Chemical composition'].unique().tolist()}
         # Identify the base matrix for each row
@@ -77,7 +79,13 @@ class Enviroment:
             df[TargetColumns] = df[TargetColumns].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
             
         target_columns = TargetColumns + ['Tg/Tl']
-        df['Base_Matrix'] = df.drop(columns=target_columns).iloc[:, 1:].idxmax(axis=1)
+        feature_df = df.drop(columns=target_columns)
+        max_values = feature_df.max(axis=1)
+        df['Base_Matrix'] = feature_df.apply(
+        lambda row: row[row == max_values[row.name]].index.tolist(),
+        axis=1
+        )
+        df = df.explode('Base_Matrix').reset_index(drop=True)
         # Use the Base_Matrix values to groupby, then use the percentile to find the percentile of each group, only for TargetColumns, to get a thresholds dict
         matrix_thresholds = {group: data[target_columns].quantile(percentile).to_dict() for group, data in df.groupby('Base_Matrix')}
         matrix_thresholds = pd.DataFrame(matrix_thresholds).T
@@ -418,7 +426,7 @@ class Enviroment:
                     if target in self.minmax_record:
                         result_[target] = self.inverse_normal_targets(target, result_[target])
                 self.new_bmgs.append(result_)
-                logger.info('Find new BMGs: %s, reward: %s', bmg_.bmg_s, reward)
+                # logger.info('Find new BMGs: %s, reward: %s', bmg_.bmg_s, reward)
             else:
                 self.exist_bmgs[bmg_.bmg_s] += 1
                 ubc_reward = Alpha * math.sqrt((2 * math.log(MaxStep))/self.exist_bmgs[bmg_.bmg_s])
@@ -442,7 +450,6 @@ def unit_test():
         assert env.judge_s(s)
     print('len(env.init_pool):', len(env.init_pool))
     print(env.matrix_thresholds)
-   
     for epoch in range(100):
         random_base_matrix = np.random.choice(list(env.init_base_matrix.keys()))
         s = env.reset_by_constraint(*env.init_base_matrix[random_base_matrix])

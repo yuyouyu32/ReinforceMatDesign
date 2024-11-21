@@ -50,5 +50,5 @@ if __name__ == "__main__":
     else:
         # Single process
         for target_name in target_columns:
-            if target_name in {'Tg(K)', 'Tx(K)', 'Tl(K)'}: continue
+            if target_name not in {'Tg(K)', 'Tx(K)', 'Tl(K)'}: continue
             process_target(target_name, file_path, drop_columns, Save_path, target_columns)
