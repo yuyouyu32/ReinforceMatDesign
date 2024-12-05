@@ -16,7 +16,7 @@ torch.cuda.manual_seed_all(Seed)
 np.random.seed(Seed)
 random.seed(Seed)
 
-from env.enviroment import Enviroment
+from env.environment import Environment
 from RLs.BaseAgent import BaseAgent
 from RLs.PPO import PPOAgent
 from RLs.TD3 import TD3Agent
@@ -28,7 +28,7 @@ class Trainer:
     def __init__(self, agent: Union[BaseAgent, PPOAgent, TD3Agent],
         batch_size: int, total_steps: int, save_path: str, start_timesteps: int = 500, log_episodes: int = 10, eval_steps: int = 1000):
         self.agent = agent
-        self.env: Enviroment = self.agent.env
+        self.env: Environment = self.agent.env
         self.batch_size = batch_size
         self.total_steps = total_steps
         self.start_timesteps = start_timesteps

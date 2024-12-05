@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from config import *
-from env.enviroment import Enviroment
+from env.environment import Environment
 from exp.PERBuffer import PrioritizedReplayBuffer
 from exp.ReplayBuffer import ReplayBuffer
 from exp.TrustBuffer import TrustReplayBuffer
@@ -22,7 +22,7 @@ class BaseAgent(ABC):
             self.buffer = PrioritizedReplayBuffer(PoolSize)
         else:
             self.buffer = ReplayBuffer(PoolSize)
-        self.env = Enviroment()
+        self.env = Environment()
         if self.use_trust:
             self.trust_pool = TrustReplayBuffer(TrustPoolPath)
         self.device = device

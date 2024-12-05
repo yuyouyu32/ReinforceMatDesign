@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config import ExploreBases, MaxStep, N_Action, N_State, Seed, logging
-from env.enviroment import Enviroment
+from env.environment import Environment
 from RLs.BaseAgent import BaseAgent
 from RLs.PPO import PPOAgent
 from RLs.TD3 import TD3Agent
@@ -25,7 +25,7 @@ random.seed(Seed)
 class Predictor:
     def __init__(self, agent: Union[BaseAgent, PPOAgent, TD3Agent], episodes: int, save_path: str, log_episodes: int = 10):
         self.agent = agent
-        self.env: Enviroment = self.agent.env
+        self.env: Environment = self.agent.env
         self.episodes = episodes
         self.save_path = save_path
         self.log_episodes = log_episodes

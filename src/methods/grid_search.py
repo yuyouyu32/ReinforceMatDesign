@@ -1,4 +1,4 @@
-from env.enviroment import Enviroment
+from env.environment import Environment
 import numpy as np
 import pandas as pd 
 
@@ -8,7 +8,7 @@ if __name__ == '__main__':
     drop_columns = ['BMGs', "Chemical composition", 'cls_label']
     target_columns = ['Tg(K)', 'Tx(K)', 'Tl(K)', 'Dmax(mm)', 'yield(MPa)', 'Modulus (GPa)', 'Ε(%)']
     results_path = '../results/ML_All'
-    env = Enviroment()
+    env = Environment()
     best_models = env.best_models
     compositions = pd.read_excel(data_path).drop(columns = drop_columns).drop(columns = target_columns).columns
     random_search_data_path = './methods/random_search.xlsx'

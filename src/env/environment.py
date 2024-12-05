@@ -16,16 +16,16 @@ import json
 logger = logging.getLogger(__name__)
 
 
-class Enviroment:
+class Environment:
     def __init__(self) -> None:
         self.n_actions = N_Action
         self.n_states = N_State
+        # Thresholds
+        self.matrix_thresholds, self.exist_bmgs = self.define_matrix_thresholds(DataPath, Percentile)
         # Models
         self.models = ML_Model(DataPath, DropColumns, TargetColumns, MLResultPath)
         self.best_models = self.models.get_best_models(norm_features=True, norm_target=True)
         self.cls_model = Cls_Model(ClsPath, ClsDropColumns, ClsTargetColumns, ClsResultpath).get_best_models(norm_features=True)
-        # Thresholds
-        self.matrix_thresholds, self.exist_bmgs = self.define_matrix_thresholds(DataPath, Percentile)
         # Record new BMGs
         self.new_bmgs = []
         # Initial Pool and constraints
@@ -445,7 +445,7 @@ class Enviroment:
 
 
 def unit_test():
-    env = Enviroment()
+    env = Environment()
     for s in env.init_pool:
         assert env.judge_s(s)
     print('len(env.init_pool):', len(env.init_pool))
@@ -464,6 +464,6 @@ def unit_test():
             s = s_
 
 
-# python -m env.enviroment
+# python -m env.Environment
 if __name__ == '__main__':
     unit_test()

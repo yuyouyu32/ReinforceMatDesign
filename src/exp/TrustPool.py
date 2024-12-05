@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from BMGs import BMGs
 from config import *
-from env.enviroment import Enviroment
+from env.environment import Environment
 
 
 class TrustPool:
@@ -21,7 +21,7 @@ class TrustPool:
         for col in TargetColumns:
             self.data[col] = (self.data[col] - self.data[col].min()) / (self.data[col].max() - self.data[col].min())
         self.data[CompositionColumns] = self.data[CompositionColumns].apply(lambda row: row / row.sum(), axis=1)
-        self.env = Enviroment()
+        self.env = Environment()
         self.models = self.env.models
         self.fill_na_with_models()
 

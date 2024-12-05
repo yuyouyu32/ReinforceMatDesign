@@ -63,7 +63,8 @@ class ML_Model:
         return best_models
 
     def _get_best_model(self, model_path):
-        df = pd.read_excel(model_path, index_col=0).T
+        df = pd.read_excel(model_path, index_col=0)
+        df = df.T
         # Find the best model based on the highest R2 score
         model_name = df['r2'].astype(float).idxmax()
         df_dict =  df.to_dict()
